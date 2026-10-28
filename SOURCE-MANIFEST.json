@@ -7125,6 +7125,12 @@
       "origin": "local main_agent directory"
     },
     {
+      "path": "iva/iva_integration/tender_odt.py",
+      "origin": "local main_agent directory",
+      "sha256": "bacce2a33a123415e315860fd86b54ff7ef7bc14e9e3aa6c2fb756855474faad",
+      "bytes": 5877
+    },
+    {
       "path": "iva/iva_integration/tender_profile.json",
       "sha256": "404a51fc1c73a107185305bf7c885c9dcf623226c63828112843ffc4745c390d",
       "bytes": 2512,
@@ -7138,8 +7144,8 @@
     },
     {
       "path": "iva/iva_integration/tender_research.py",
-      "sha256": "aecab5aacc63c93db817ff69ac5c6a6efc5e0317ed53944f23677679cfaae07f",
-      "bytes": 58231,
+      "sha256": "cf34a366529b85134229ca04f15255ae23909a3757a7ad061f0b5e52e986ea15",
+      "bytes": 59005,
       "origin": "local main_agent directory"
     },
     {
@@ -8227,6 +8233,12 @@
       "sha256": "6a727a3eb28c5cf0adf9003d4657be069a6b5ff9ddcf940768025a41c0a30c2f",
       "bytes": 13460,
       "origin": "local main_agent directory"
+    },
+    {
+      "path": "iva/tests/test_tender_odt.py",
+      "origin": "local main_agent directory",
+      "sha256": "e4721f77e459ac10c3929e636d65f6e01f5219ae578b5eddc1148a7830e62375",
+      "bytes": 6366
     },
     {
       "path": "iva/tests/test_tender_research.py",

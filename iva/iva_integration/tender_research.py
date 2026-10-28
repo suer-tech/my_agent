@@ -349,14 +349,16 @@ class Research:
             return dict(image)
         chunk=self.db.execute('SELECT * FROM research_chunks WHERE job=? AND number=? AND analysis IS NULL ORDER BY rowid LIMIT 1',(identity,number)).fetchone()
         if chunk:
-            # Different version UIDs can serve identical bytes. Reuse extraction
-            # only within this notice, for the exact same content hash and part.
-            duplicate=self.db.execute('''SELECT c.analysis FROM research_chunks c
+            # Identical document bytes may be attached to several notices in
+            # one immutable job/profile. Reuse extraction, never final verdicts.
+            duplicates=self.db.execute('''SELECT c.analysis,c.url,c.number FROM research_chunks c
                 JOIN research_resources a ON a.job=c.job AND a.number=c.number AND a.url=c.url
-                JOIN research_resources b ON b.job=a.job AND b.number=a.number AND b.sha256=a.sha256
+                JOIN research_resources b ON b.job=a.job AND b.sha256=a.sha256
                 WHERE b.job=? AND b.number=? AND b.url=? AND a.sha256 IS NOT NULL
-                AND c.part=? AND c.text=? AND c.analysis IS NOT NULL LIMIT 1''',
-                (identity,number,chunk['url'],chunk['part'],chunk['text'])).fetchone()
+                AND (c.number=? OR (a.kind='document' AND b.kind='document' AND c.location=?))
+                AND c.part=? AND c.text=? AND c.analysis IS NOT NULL LIMIT 8''',
+                (identity,number,chunk['url'],number,chunk['location'],chunk['part'],chunk['text'])).fetchall()
+            duplicate=next((row for row in duplicates if row['url']==chunk['url'] or row['url'] not in row['analysis']),None)
             if duplicate:
                 with self.db:self.db.execute('UPDATE research_chunks SET analysis=? WHERE job=? AND number=? AND url=? AND part=?',
                                              (duplicate['analysis'],identity,number,chunk['url'],chunk['part']))
@@ -688,6 +690,12 @@ def extract_binary(body,name,depth=0):
                         for i,row in enumerate(sheet.iter_rows(values_only=True)):
                             if any(x is not None for x in row):texts.append(f'\n[XLSX {sheet.title}, строка {i+1}] '+' | '.join(str(x) if x is not None else '' for x in row))
                 finally:book.close()
+            elif 'content.xml' in doc.namelist():
+                from iva_integration.tender_odt import body_text
+                text,media=body_text(doc.read('content.xml'),doc.read('styles.xml') if 'styles.xml' in doc.namelist() else None)
+                result={'chunks':split_text(text,'ODT текст документа')}
+                if media:result['gap']='ODT: изображения/встроенные объекты требуют отдельной визуальной проверки'
+                return result
             else:
                 chunks=[]
                 for item in infos:
