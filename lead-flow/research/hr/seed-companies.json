@@ -1,0 +1,52 @@
+[
+  {
+    "company_name": "Кадровый Метод",
+    "company_domain": "hr-metod.com",
+    "segment": "recruitment_agency",
+    "source_urls": [
+      "https://hr-metod.com/",
+      "https://hr-metod.com/kontakty"
+    ]
+  },
+  {
+    "company_name": "NayDoo",
+    "company_domain": "naydoo.pro",
+    "segment": "recruitment_agency",
+    "source_urls": [
+      "https://naydoo.pro/"
+    ]
+  },
+  {
+    "company_name": "Сфера Продаж",
+    "company_domain": "salessphere.ru",
+    "segment": "recruitment_agency",
+    "source_urls": [
+      "https://salessphere.ru/",
+      "https://salessphere.ru/contacts/"
+    ]
+  },
+  {
+    "company_name": "gethead",
+    "company_domain": "gethead.ru",
+    "segment": "recruitment_agency",
+    "source_urls": [
+      "https://gethead.ru/"
+    ]
+  },
+  {
+    "company_name": "Pro Mind Search",
+    "company_domain": "promind-s.ru",
+    "segment": "recruitment_agency",
+    "source_urls": [
+      "https://promind-s.ru/"
+    ]
+  },
+  {
+    "company_name": "Руссмаркет",
+    "company_domain": "russ-market.ru",
+    "segment": "recruitment_agency",
+    "source_urls": [
+      "https://hr.russ-market.ru/"
+    ]
+  }
+]

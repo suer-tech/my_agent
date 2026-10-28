@@ -1,0 +1,17 @@
+{
+  "status": "corrected_draft_and_review_saved",
+  "original_images": 3,
+  "future_numbered_payments": 10,
+  "october_unpaid_obligations": 1,
+  "total_planned_rows": 11,
+  "missing_payment_amounts": 0,
+  "repeated_decimal_questions": 0,
+  "october_due_date": "2026-10-17",
+  "october_amount_source": "saved_original_overdue_overview",
+  "days_overdue_dynamic": true,
+  "current_month_carry_forward_verified_on_isolated_copy": true,
+  "actual_import_completed": false,
+  "standard_confirmation_required": true,
+  "actual_expenses_created": 0,
+  "telegram_sends": 0
+}

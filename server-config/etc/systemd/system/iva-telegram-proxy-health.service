@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Iva Telegram proxy connectivity and recover DNS failures
+After=iva-telegram-proxy.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/iva/telegram_proxy_health.py
+TimeoutStartSec=90
+UMask=0077
+ProtectSystem=full
+PrivateTmp=true

@@ -1,0 +1,1568 @@
+/* eslint-disable @typescript-eslint/no-floating-promises -- Node owns test registration */
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  alertOwnerAboutCustom,
+  alertOwnerAboutPlugins,
+  alertOwnerAboutUserbot,
+  alertOwnerWhenServed,
+  retireCheckout,
+  captureOptionalWriterState,
+  restartPluginUnits,
+  quarantineUpdateState,
+  restoreUpdateState,
+  restoreUpdateStateOrNotify,
+  restoreMigratedWriterState,
+  restoreOptionalWriterState,
+  restoreWriterOwnership,
+  stopWriterUnits,
+  tombstoned,
+} from "./update-finish.ts";
+import { execFileSync } from "node:child_process";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  LEGACY_BRAIN_UNITS,
+  LEGACY_MEMORY_UNITS,
+} from "./lib/legacy-memory-units.ts";
+import { noticeTranslator, userbotOffAlert } from "./lib/notice-policy.ts";
+import fc from "fast-check";
+import { layoutFor } from "./lib/version-store.ts";
+import { rewriteRunStatusesForUpdate } from "./lib/wf-store.ts";
+
+type WriterRuntime = Parameters<typeof stopWriterUnits>[0];
+const USERBOT = "iva-telegram-userbot.service";
+
+test("tombstones follow the canonical custom data directory", (t) => {
+  const home = mkdtempSync(join(tmpdir(), "iva-tombstones-c4-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const dataDir = join(home, "state", "custom-data");
+  mkdirSync(join(dataDir, "custom"), { recursive: true });
+  writeFileSync(join(home, ".env"), "ASSISTANT_DATA_DIR=state/custom-data\n");
+  writeFileSync(
+    join(dataDir, "custom/manifest.json"),
+    `${JSON.stringify({ entries: { "agent/removed.ts": { tombstone: true } } })}\n`,
+  );
+
+  assert.deepEqual(tombstoned(home), ["agent/removed.ts"]);
+});
+
+test("update quarantines session state and rewrites chat status in place", (t) => {
+  const home = mkdtempSync(join(tmpdir(), "iva-update-state-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const data = join(home, "data");
+  for (const path of [
+    join(home, ".eve/.workflow-data"),
+    join(home, ".workflow-data"),
+    join(data, "run-status.d"),
+    join(home, "vault"),
+  ])
+    mkdirSync(path, { recursive: true });
+  writeFileSync(join(home, ".eve/.workflow-data/run.json"), "old run\n");
+  writeFileSync(join(home, ".workflow-data/run.json"), "legacy run\n");
+  writeFileSync(
+    join(data, "run-status.d/chat.json"),
+    JSON.stringify({
+      status: "running",
+      updatedAt: 123,
+      statusMessageId: 42,
+      sessionId: "old-session",
+    }),
+  );
+  writeFileSync(join(data, "run-status.json"), "running\n");
+  writeFileSync(join(data, "rollup-session-daily.json"), "daily\n");
+  writeFileSync(join(data, "telegram-queue.json"), "queued\n");
+  writeFileSync(join(home, "vault/memory.md"), "remembered\n");
+
+  const quarantined = quarantineUpdateState(
+    home,
+    data,
+    () => undefined,
+    "update-stamp",
+  );
+  rewriteRunStatusesForUpdate(data);
+
+  assert.equal(quarantined.length, 3);
+  for (const entry of quarantined) {
+    assert.equal(existsSync(entry.path), false);
+    assert.equal(existsSync(entry.trash), true);
+  }
+  assert.deepEqual(
+    JSON.parse(readFileSync(join(data, "run-status.d/chat.json"), "utf8")),
+    {
+      status: "running",
+      updatedAt: 0,
+      statusMessageId: 42,
+      sessionId: "old-session",
+      generation: 1,
+    },
+  );
+  assert.equal(
+    readFileSync(join(data, "run-status.json"), "utf8"),
+    "running\n",
+  );
+  assert.equal(
+    readFileSync(join(data, "telegram-queue.json"), "utf8"),
+    "queued\n",
+  );
+  assert.equal(
+    readFileSync(join(home, "vault/memory.md"), "utf8"),
+    "remembered\n",
+  );
+});
+
+test("update rollback restores every quarantined session path", (t) => {
+  const home = mkdtempSync(join(tmpdir(), "iva-update-rollback-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const data = join(home, "data");
+  const store = join(home, ".eve/.workflow-data");
+  mkdirSync(store, { recursive: true });
+  mkdirSync(data, { recursive: true });
+  writeFileSync(join(store, "old.json"), "old\n");
+  writeFileSync(join(data, "rollup-session-weekly.json"), "old session\n");
+  writeFileSync(join(data, "telegram-queue.json"), "queued\n");
+  const quarantined = quarantineUpdateState(
+    home,
+    data,
+    () => undefined,
+    "rollback-stamp",
+  );
+  mkdirSync(store, { recursive: true });
+  writeFileSync(join(store, "candidate.json"), "candidate\n");
+
+  restoreUpdateState(quarantined);
+
+  assert.deepEqual(readdirSync(store), ["old.json"]);
+  assert.equal(
+    readFileSync(join(data, "rollup-session-weekly.json"), "utf8"),
+    "old session\n",
+  );
+  assert.equal(
+    readFileSync(join(data, "telegram-queue.json"), "utf8"),
+    "queued\n",
+  );
+  assert.equal(
+    quarantined.some(({ trash }) => existsSync(trash)),
+    false,
+  );
+});
+
+test("managed update keeps the shared workflow-store symlink reachable", (t) => {
+  const home = mkdtempSync(join(tmpdir(), "iva-update-managed-link-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const store = join(home, ".eve/.workflow-data");
+  const versionRoot = join(home, "versions/0.4.0-abcdef123456");
+  const versionStore = join(versionRoot, ".eve/.workflow-data");
+  mkdirSync(store, { recursive: true });
+  mkdirSync(join(versionRoot, ".eve"), { recursive: true });
+  writeFileSync(join(store, "old.json"), "old\n");
+  symlinkSync(store, versionStore);
+
+  const quarantined = quarantineUpdateState(
+    versionRoot,
+    join(home, "data"),
+    () => undefined,
+    "managed-stamp",
+  );
+
+  assert.equal(quarantined.length, 1);
+  assert.equal(existsSync(versionStore), true);
+  writeFileSync(join(versionStore, "new.json"), "new\n");
+  assert.equal(readFileSync(join(store, "new.json"), "utf8"), "new\n");
+});
+
+test("failed rollback recovery reports every retained trash path", () => {
+  const notices: string[] = [];
+  const retained = [
+    { path: "/srv/iva/store", trash: "/srv/iva/store.trash-first" },
+    { path: "/srv/iva/rollup", trash: "/srv/iva/rollup.trash-second" },
+  ];
+
+  assert.throws(() =>
+    restoreUpdateStateOrNotify(
+      retained,
+      (message) => notices.push(message),
+      "recovery after rollback failed",
+    ),
+  );
+  assert.deepEqual(notices, [
+    "recovery after rollback failed; state is in /srv/iva/store.trash-first, /srv/iva/rollup.trash-second; manual help is needed",
+  ]);
+});
+
+function fakeRuntime({
+  active,
+  enabled,
+  presentUnits = [],
+  unavailable = [],
+}: {
+  active: readonly string[];
+  enabled: readonly string[];
+  presentUnits?: readonly string[];
+  unavailable?: readonly string[];
+}) {
+  const activeUnits = new Set(active);
+  const enabledUnits = new Set(enabled);
+  const unavailableUnits = new Set(unavailable);
+  const knownUnits = new Set([
+    "iva.service",
+    "iva-telegram-poll.service",
+    ...presentUnits,
+    ...active,
+    ...enabled,
+  ]);
+  for (const unit of unavailable) knownUnits.delete(unit);
+  const events: string[] = [];
+  const systemd = {
+    isActive(unit: string) {
+      events.push(`is-active ${unit}`);
+      return activeUnits.has(unit);
+    },
+    isEnabled(unit: string) {
+      events.push(`is-enabled ${unit}`);
+      return enabledUnits.has(unit);
+    },
+    stop(units: readonly string[]) {
+      events.push(`stop ${units.join(" ")}`);
+      for (const unit of units) activeUnits.delete(unit);
+    },
+    disableNow(units: readonly string[]) {
+      events.push(`disable-now ${units.join(" ")}`);
+      for (const unit of units) {
+        activeUnits.delete(unit);
+        enabledUnits.delete(unit);
+      }
+    },
+    query(action: string, unit: string) {
+      events.push(`${action} ${unit}`);
+      if (action === "show")
+        return {
+          code: 0,
+          out: knownUnits.has(unit) ? "loaded" : "not-found",
+          err: "",
+        };
+      if (action === "is-active")
+        return {
+          code: activeUnits.has(unit) ? 0 : 3,
+          out: activeUnits.has(unit)
+            ? "active"
+            : unavailableUnits.has(unit)
+              ? "unknown"
+              : "inactive",
+          err: "",
+        };
+      if (action === "is-enabled")
+        return {
+          code: enabledUnits.has(unit) ? 0 : 1,
+          out: enabledUnits.has(unit)
+            ? "enabled"
+            : unavailableUnits.has(unit)
+              ? "not-found"
+              : "disabled",
+          err: "",
+        };
+      if (unavailableUnits.has(unit))
+        return { code: 1, out: "unit not found", err: "" };
+      if (action === "enable") enabledUnits.add(unit);
+      if (action === "start") activeUnits.add(unit);
+      return { code: 0, out: "", err: "" };
+    },
+  };
+  return {
+    runtime: {
+      BRAIN_TIMER: "iva-brain.timer",
+      BRAIN_SERVICE: "iva-brain.service",
+      SVC_USERBOT: USERBOT,
+      SERVICES: ["iva.service", "iva-telegram-poll.service"],
+      systemd,
+    } as unknown as WriterRuntime,
+    activeUnits,
+    enabledUnits,
+    knownUnits,
+    events,
+  };
+}
+
+test("quiesce skips absent required units while stopping present writers", () => {
+  for (const absent of [
+    ["iva.service"],
+    ["iva.service", "iva-telegram-poll.service"],
+  ]) {
+    const fake = fakeRuntime({
+      active: ["iva-telegram-poll.service"],
+      enabled: [],
+      unavailable: absent,
+    });
+    const stopped: string[] = [];
+    Object.assign(fake.runtime.systemd, {
+      stop(units: readonly string[]) {
+        for (const unit of units) {
+          if (absent.includes(unit))
+            throw new Error(`stop ${unit} failed (exit 5)`);
+          stopped.push(unit);
+          fake.activeUnits.delete(unit);
+        }
+      },
+    });
+    stopWriterUnits(fake.runtime);
+    assert.deepEqual(
+      stopped,
+      absent.includes("iva-telegram-poll.service")
+        ? []
+        : ["iva-telegram-poll.service"],
+    );
+  }
+});
+
+test("quiesce stops every old writer and leaves update-check alone", () => {
+  const fake = fakeRuntime({
+    active: [
+      "iva.service",
+      "iva-telegram-poll.service",
+      "iva-brain.timer",
+      "iva-brain.service",
+      "iva-update-check.timer",
+    ],
+    enabled: ["iva-brain.timer", "iva-update-check.timer"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  fake.events.length = 0;
+
+  stopWriterUnits(fake.runtime, before);
+
+  assert.deepEqual(
+    fake.events.filter((event) => event.startsWith("stop ")),
+    [
+      "stop iva-brain.timer",
+      "stop iva-brain.service",
+      "stop iva.service iva-telegram-poll.service",
+    ],
+  );
+  assert.equal(fake.activeUnits.has("iva-update-check.timer"), true);
+});
+
+test("a legacy install with no optional units quiesces only mandatory writers", () => {
+  const fake = fakeRuntime({
+    active: ["iva.service", "iva-telegram-poll.service"],
+    enabled: [],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  fake.events.length = 0;
+
+  stopWriterUnits(fake.runtime, before);
+
+  assert.equal(fake.events[0], "stop iva.service iva-telegram-poll.service");
+});
+
+test("an unreadable optional unit state blocks quiesce before stop", () => {
+  const fake = fakeRuntime({ active: [], enabled: [] });
+  Object.assign(fake.runtime.systemd, {
+    query(action: string, unit: string) {
+      fake.events.push(`${action} ${unit}`);
+      return { code: 1, out: "", err: "bus unavailable" };
+    },
+  });
+
+  assert.throws(
+    () => captureOptionalWriterState(fake.runtime),
+    /could not read load state/u,
+  );
+  assert.equal(
+    fake.events.some((event) => event.startsWith("stop ")),
+    false,
+  );
+});
+
+test("quiesce fails if systemd leaves any writer active", () => {
+  const fake = fakeRuntime({ active: ["iva.service"], enabled: [] });
+  const before = captureOptionalWriterState(fake.runtime);
+  Object.assign(fake.runtime.systemd, {
+    stop(units: readonly string[]) {
+      fake.events.push(`stop ${units.join(" ")}`);
+    },
+  });
+
+  assert.throws(
+    () => stopWriterUnits(fake.runtime, before),
+    /writer iva\.service remained active/u,
+  );
+});
+
+test("a timer race cannot leave an optional service writing", () => {
+  const fake = fakeRuntime({
+    active: ["iva-brain.timer", "iva.service"],
+    enabled: ["iva-brain.timer"],
+    presentUnits: ["iva-brain.service"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  assert.equal(
+    before.find((state) => state.unit === "iva-brain.service")?.active,
+    false,
+  );
+  Object.assign(fake.runtime.systemd, {
+    stop(units: readonly string[]) {
+      fake.events.push(`stop ${units.join(" ")}`);
+      for (const unit of units) {
+        if (unit === "iva-brain.timer")
+          fake.activeUnits.add("iva-brain.service");
+        fake.activeUnits.delete(unit);
+      }
+    },
+  });
+
+  stopWriterUnits(fake.runtime, before);
+
+  assert.equal(fake.activeUnits.has("iva-brain.service"), false);
+  assert.deepEqual(
+    fake.events.filter((event) => event.startsWith("stop ")),
+    [
+      "stop iva-brain.timer",
+      "stop iva-brain.service",
+      "stop iva.service iva-telegram-poll.service",
+    ],
+  );
+});
+
+test("the timer barrier stops userbot even when it starts after capture", () => {
+  const fake = fakeRuntime({
+    active: ["iva-brain.timer", "iva.service"],
+    enabled: ["iva-brain.timer"],
+    presentUnits: [USERBOT],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  assert.equal(before.find((state) => state.unit === USERBOT)?.active, false);
+  Object.assign(fake.runtime.systemd, {
+    stop(units: readonly string[]) {
+      fake.events.push(`stop ${units.join(" ")}`);
+      for (const unit of units) {
+        if (unit === "iva-brain.timer") fake.activeUnits.add(USERBOT);
+        fake.activeUnits.delete(unit);
+      }
+    },
+  });
+  fake.events.length = 0;
+
+  stopWriterUnits(fake.runtime, before);
+
+  assert.equal(fake.activeUnits.has(USERBOT), false);
+  assert.deepEqual(
+    fake.events.filter((event) => event.startsWith("stop ")),
+    [
+      "stop iva-brain.timer",
+      `stop ${USERBOT}`,
+      "stop iva.service iva-telegram-poll.service",
+    ],
+  );
+});
+
+test("a userbot stop fault restores its captured active and enabled state", () => {
+  const fake = fakeRuntime({
+    active: [USERBOT],
+    enabled: [USERBOT],
+    presentUnits: ["iva-brain.timer", "iva-brain.service"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  Object.assign(fake.runtime.systemd, {
+    stop(units: readonly string[]) {
+      fake.events.push(`stop ${units.join(" ")}`);
+      for (const unit of units) fake.activeUnits.delete(unit);
+      if (units.includes(USERBOT)) throw new Error("userbot stop fault");
+    },
+  });
+
+  assert.throws(
+    () => stopWriterUnits(fake.runtime, before),
+    /userbot stop fault/u,
+  );
+  restoreWriterOwnership(fake.runtime, before, {
+    unitMigrationStarted: true,
+    legacyMemoryOwnerProven: false,
+    userbotReady: true,
+  });
+
+  assert.equal(fake.activeUnits.has(USERBOT), true);
+  assert.equal(fake.enabledUnits.has(USERBOT), true);
+});
+
+test("a disabled userbot stays disabled and stopped after unit migration", () => {
+  const fake = fakeRuntime({
+    active: [],
+    enabled: [],
+    presentUnits: [USERBOT, "iva-brain.timer", "iva-brain.service"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  assert.deepEqual(
+    before.find((state) => state.unit === USERBOT),
+    {
+      unit: USERBOT,
+      loadState: "loaded",
+      active: false,
+      enabled: false,
+    },
+  );
+  stopWriterUnits(fake.runtime, before);
+  fake.activeUnits.add(USERBOT);
+  fake.enabledUnits.add(USERBOT);
+  fake.events.length = 0;
+
+  restoreWriterOwnership(fake.runtime, before, {
+    unitMigrationStarted: true,
+    legacyMemoryOwnerProven: false,
+    userbotReady: true,
+  });
+
+  assert.equal(fake.activeUnits.has(USERBOT), false);
+  assert.equal(fake.enabledUnits.has(USERBOT), false);
+  assert.equal(fake.events.includes(`start ${USERBOT}`), false);
+  assert.equal(fake.events.includes(`enable ${USERBOT}`), false);
+});
+
+test("a previously missing userbot is never started during restoration", () => {
+  const fake = fakeRuntime({
+    active: [],
+    enabled: [],
+    presentUnits: ["iva-brain.timer", "iva-brain.service"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  assert.deepEqual(
+    before.find((state) => state.unit === USERBOT),
+    {
+      unit: USERBOT,
+      loadState: "not-found",
+      active: false,
+      enabled: false,
+    },
+  );
+  stopWriterUnits(fake.runtime, before);
+  fake.knownUnits.add(USERBOT);
+  fake.events.length = 0;
+
+  restoreWriterOwnership(fake.runtime, before, {
+    unitMigrationStarted: true,
+    legacyMemoryOwnerProven: false,
+    userbotReady: true,
+  });
+
+  assert.equal(
+    fake.events.some(
+      (event) => event === `start ${USERBOT}` || event === `enable ${USERBOT}`,
+    ),
+    false,
+  );
+});
+
+test("an enabled legacy timer stays stopped through migration and returns inactive", () => {
+  const legacyTimer = [...LEGACY_BRAIN_UNITS, ...LEGACY_MEMORY_UNITS].find(
+    (unit) => unit.endsWith(".timer"),
+  );
+  assert.ok(legacyTimer);
+  const fake = fakeRuntime({ active: [], enabled: [legacyTimer] });
+  const before = captureOptionalWriterState(fake.runtime);
+  fake.events.length = 0;
+
+  stopWriterUnits(fake.runtime, before);
+  assert.equal(fake.activeUnits.has(legacyTimer), false);
+  restoreOptionalWriterState(fake.runtime, before);
+
+  assert.equal(fake.enabledUnits.has(legacyTimer), true);
+  assert.equal(fake.activeUnits.has(legacyTimer), false);
+  assert.ok(fake.events[0]?.includes(legacyTimer));
+  assert.equal(fake.events.includes(`start ${legacyTimer}`), false);
+});
+
+test("Brain units regain their exact enabled and active state", () => {
+  const fake = fakeRuntime({
+    active: ["iva-brain.timer"],
+    enabled: ["iva-brain.timer"],
+    presentUnits: ["iva-brain.service"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  stopWriterUnits(fake.runtime);
+  // Unit refresh can change optional state. Restoration still follows the snapshot.
+  fake.activeUnits.add("iva-brain.service");
+  fake.enabledUnits.add("iva-brain.service");
+
+  restoreOptionalWriterState(fake.runtime, before);
+
+  assert.deepEqual(fake.activeUnits, new Set(["iva-brain.timer"]));
+  assert.deepEqual(fake.enabledUnits, new Set(["iva-brain.timer"]));
+  assert.equal(fake.events.includes("start iva-brain.service"), false);
+});
+
+test("an active but disabled Brain unit restarts without being enabled", () => {
+  const fake = fakeRuntime({
+    active: ["iva-brain.service"],
+    enabled: [],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  stopWriterUnits(fake.runtime);
+
+  restoreOptionalWriterState(fake.runtime, before);
+
+  assert.equal(fake.activeUnits.has("iva-brain.service"), true);
+  assert.equal(fake.enabledUnits.has("iva-brain.service"), false);
+  assert.ok(fake.events.includes("start iva-brain.service"));
+  assert.equal(fake.events.includes("enable iva-brain.service"), false);
+});
+
+test("a partial quiesce fault can restore the captured optional state", () => {
+  const fake = fakeRuntime({
+    active: ["iva-brain.timer", "iva-brain.service"],
+    enabled: ["iva-brain.timer"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  Object.assign(fake.runtime.systemd, {
+    stop(units: readonly string[]) {
+      for (const unit of units) fake.activeUnits.delete(unit);
+      throw new Error("stop fault");
+    },
+  });
+
+  assert.throws(() => stopWriterUnits(fake.runtime, before), /stop fault/u);
+  Object.assign(fake.runtime.systemd, {
+    stop(units: readonly string[]) {
+      for (const unit of units) fake.activeUnits.delete(unit);
+    },
+  });
+  restoreOptionalWriterState(fake.runtime, before);
+
+  assert.equal(fake.activeUnits.has("iva-brain.timer"), true);
+  assert.equal(fake.activeUnits.has("iva-brain.service"), true);
+  assert.equal(fake.enabledUnits.has("iva-brain.timer"), true);
+  assert.equal(fake.enabledUnits.has("iva-brain.service"), false);
+});
+
+test("legacy Brain state moves to the current semantic owner", () => {
+  const legacyTimer = LEGACY_BRAIN_UNITS.find((unit) =>
+    unit.endsWith(".timer"),
+  );
+  const legacyService = LEGACY_BRAIN_UNITS.find((unit) =>
+    unit.endsWith(".service"),
+  );
+  assert.ok(legacyTimer);
+  assert.ok(legacyService);
+  const fake = fakeRuntime({
+    active: [legacyService],
+    enabled: [legacyTimer],
+    presentUnits: ["iva-brain.timer", "iva-brain.service"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  stopWriterUnits(fake.runtime, before);
+  fake.enabledUnits.delete(legacyTimer);
+  fake.events.length = 0;
+
+  restoreMigratedWriterState(fake.runtime, before);
+
+  assert.equal(fake.enabledUnits.has("iva-brain.timer"), true);
+  assert.equal(fake.activeUnits.has("iva-brain.timer"), false);
+  assert.equal(fake.activeUnits.has("iva-brain.service"), true);
+  assert.equal(fake.enabledUnits.has("iva-brain.service"), false);
+  assert.equal(
+    fake.events.some((event) => event.includes(legacyTimer)),
+    false,
+  );
+  assert.equal(
+    fake.events.some((event) => event.includes(legacyService)),
+    false,
+  );
+});
+
+test("a migrated legacy memory timer keeps an active live service owner", () => {
+  const legacyTimer = LEGACY_MEMORY_UNITS.find((unit) =>
+    unit.endsWith(".timer"),
+  );
+  assert.ok(legacyTimer);
+  const fake = fakeRuntime({
+    active: ["iva.service"],
+    enabled: [legacyTimer],
+    presentUnits: [
+      legacyTimer.replace(/\.timer$/u, ".service"),
+      "iva-brain.timer",
+      "iva-brain.service",
+    ],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  stopWriterUnits(fake.runtime, before);
+  fake.enabledUnits.delete(legacyTimer);
+  fake.knownUnits.delete(legacyTimer);
+  fake.knownUnits.delete(legacyTimer.replace(/\.timer$/u, ".service"));
+  fake.activeUnits.add("iva.service");
+  fake.events.length = 0;
+
+  restoreMigratedWriterState(fake.runtime, before, {
+    legacyMemoryOwnerProven: true,
+  });
+
+  assert.equal(fake.activeUnits.has("iva.service"), true);
+  assert.equal(fake.events.includes(`enable ${legacyTimer}`), false);
+  assert.equal(fake.events.includes(`start ${legacyTimer}`), false);
+  assert.equal(
+    fake.events.some((event) => event.startsWith(`stop ${legacyTimer}`)),
+    false,
+  );
+});
+
+test("a legacy memory timer retained by writeUnits regains its exact state", () => {
+  const legacyTimer = LEGACY_MEMORY_UNITS.find((unit) =>
+    unit.endsWith(".timer"),
+  );
+  assert.ok(legacyTimer);
+  const fake = fakeRuntime({
+    active: [],
+    enabled: [legacyTimer],
+    presentUnits: [
+      legacyTimer.replace(/\.timer$/u, ".service"),
+      "iva-brain.timer",
+      "iva-brain.service",
+    ],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  stopWriterUnits(fake.runtime, before);
+  fake.enabledUnits.delete(legacyTimer);
+  fake.events.length = 0;
+
+  restoreMigratedWriterState(fake.runtime, before);
+
+  assert.equal(fake.enabledUnits.has(legacyTimer), true);
+  assert.equal(fake.activeUnits.has(legacyTimer), false);
+  assert.ok(fake.events.includes(`enable ${legacyTimer}`));
+  assert.equal(fake.activeUnits.has("iva.service"), false);
+});
+
+test("a migrated legacy memory schedule fails without its live owner", () => {
+  const legacyTimer = LEGACY_MEMORY_UNITS.find((unit) =>
+    unit.endsWith(".timer"),
+  );
+  assert.ok(legacyTimer);
+  const fake = fakeRuntime({
+    active: [],
+    enabled: [legacyTimer],
+    presentUnits: [
+      legacyTimer.replace(/\.timer$/u, ".service"),
+      "iva-brain.timer",
+      "iva-brain.service",
+    ],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  stopWriterUnits(fake.runtime, before);
+  fake.enabledUnits.delete(legacyTimer);
+  fake.knownUnits.delete(legacyTimer);
+  fake.knownUnits.delete(legacyTimer.replace(/\.timer$/u, ".service"));
+
+  assert.throws(
+    () =>
+      restoreMigratedWriterState(fake.runtime, before, {
+        legacyMemoryOwnerProven: true,
+      }),
+    /no active service owner/u,
+  );
+});
+
+test("an active service alone does not prove a migrated memory owner", () => {
+  const legacyTimer = LEGACY_MEMORY_UNITS.find((unit) =>
+    unit.endsWith(".timer"),
+  );
+  assert.ok(legacyTimer);
+  const legacyService = legacyTimer.replace(/\.timer$/u, ".service");
+  const fake = fakeRuntime({
+    active: ["iva.service"],
+    enabled: [legacyTimer],
+    presentUnits: [legacyService, "iva-brain.timer", "iva-brain.service"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  stopWriterUnits(fake.runtime, before);
+  fake.enabledUnits.delete(legacyTimer);
+  fake.knownUnits.delete(legacyTimer);
+  fake.knownUnits.delete(legacyService);
+  fake.activeUnits.add("iva.service");
+
+  assert.throws(
+    () => restoreMigratedWriterState(fake.runtime, before),
+    /owner was not proven by writeUnits/u,
+  );
+});
+
+test("a unit-write fault restores the captured legacy Brain owner", () => {
+  const legacyTimer = LEGACY_BRAIN_UNITS.find((unit) =>
+    unit.endsWith(".timer"),
+  );
+  assert.ok(legacyTimer);
+  const fake = fakeRuntime({
+    active: [legacyTimer],
+    enabled: [legacyTimer],
+    unavailable: ["iva-brain.timer"],
+  });
+  const before = captureOptionalWriterState(fake.runtime);
+  stopWriterUnits(fake.runtime, before);
+
+  restoreWriterOwnership(fake.runtime, before, {
+    unitMigrationStarted: false,
+    legacyMemoryOwnerProven: false,
+    userbotReady: true,
+  });
+
+  assert.equal(fake.activeUnits.has(legacyTimer), true);
+  assert.equal(fake.enabledUnits.has(legacyTimer), true);
+  assert.equal(fake.activeUnits.has("iva-brain.timer"), false);
+  assert.equal(fake.enabledUnits.has("iva-brain.timer"), false);
+});
+
+// ── Alert о выключенном плагине (ADR-0007 + ADR-0009) ────────────────────────────────────
+
+/** Установка с настроенным чатом: `.env` — единственный источник токена и чата. */
+function installationWithChat(
+  t: { after(fn: () => void): void },
+  env = "TELEGRAM_BOT_TOKEN=token\nTELEGRAM_DIGEST_CHAT_ID=42\nAGENT_LANGUAGE=en\n",
+): ReturnType<typeof layoutFor> {
+  const home = mkdtempSync(join(tmpdir(), "iva-plugin-alert-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  mkdirSync(join(home, "data"), { recursive: true });
+  writeFileSync(join(home, ".env"), env);
+  return layoutFor(home);
+}
+
+const refused = (digest: string) => ({
+  name: "trace",
+  digest,
+  reason: "eve: extension build failed on extension/extension.ts",
+});
+
+test("the owner hears about a switched-off plugin once a week, sooner if it changed", async (t) => {
+  const layout = installationWithChat(t);
+  const sent: string[] = [];
+  const said: string[] = [];
+  const send = (text: string): Promise<boolean> => {
+    sent.push(text);
+    return Promise.resolve(true);
+  };
+  const say = (message: string): void => {
+    said.push(message);
+  };
+
+  await alertOwnerAboutPlugins(layout, [refused("aaa")], say, send);
+  await alertOwnerAboutPlugins(layout, [refused("aaa")], say, send);
+
+  // Один Alert на проблему: второй прогон с тем же плагином и тем же содержимым молчит.
+  assert.equal(sent.length, 1, sent.join("\n---\n"));
+  assert.match(sent[0], /trace/u);
+  assert.match(sent[0], /iva plugin update trace/u);
+  assert.match(sent[0], /iva plugin enable trace/u);
+  // Вывод самого апдейта — не Alert: его владелец и просил, и он печатается всегда.
+  assert.equal(said.length, 2);
+  // Локальный вывод — тот же текст, что уходит в чат, плюс причина, которой в чате нет.
+  assert.match(said[0], /switched the plugin trace off/u);
+  assert.match(said[0], /extension build failed/u);
+
+  // Плагин изменился — существо проблемы другое, и говорить надо сразу.
+  await alertOwnerAboutPlugins(layout, [refused("bbb")], say, send);
+  assert.equal(sent.length, 2);
+});
+
+test("one Alert names every plugin the build switched off", async (t) => {
+  const layout = installationWithChat(t);
+  const sent: string[] = [];
+  const send = (text: string): Promise<boolean> => {
+    sent.push(text);
+    return Promise.resolve(true);
+  };
+
+  await alertOwnerAboutPlugins(
+    layout,
+    [refused("aaa"), { name: "other", digest: "bbb", reason: "boom" }],
+    () => {},
+    send,
+  );
+
+  assert.equal(sent.length, 1);
+  assert.match(sent[0], /trace/u);
+  assert.match(sent[0], /other/u);
+});
+
+test("without a chat the reason stays in the update output and nothing is throttled", async (t) => {
+  const layout = installationWithChat(t, "AGENT_LANGUAGE=en\n");
+  const said: string[] = [];
+
+  await alertOwnerAboutPlugins(layout, [refused("aaa")], (message) =>
+    said.push(message),
+  );
+
+  assert.equal(said.length, 1);
+  assert.match(said[0], /trace/u);
+  // Ничего не отправлено — и дроссель не отмечен: настроят чат, Alert придёт сразу.
+  assert.equal(existsSync(join(layout.data, "alert-state.json")), false);
+});
+
+test("an Alert that could not be sent says so and is not remembered", async (t) => {
+  const layout = installationWithChat(t);
+  const said: string[] = [];
+
+  await alertOwnerAboutPlugins(
+    layout,
+    [refused("aaa")],
+    (message) => said.push(message),
+    () => Promise.resolve(false),
+  );
+
+  assert.match(said.join("\n"), /could not tell you in Telegram about trace/u);
+  assert.equal(existsSync(join(layout.data, "alert-state.json")), false);
+});
+
+// ── Alert о заводской сборке (ADR-0007) ──────────────────────────────────────────────────
+
+const STOCK =
+  "your customization in data/custom does not build against this version, so Iva is running the stock build:\n> iva build\nerror TS1005: ';' expected.\nmore";
+
+function ownFile(layout: ReturnType<typeof layoutFor>, body: string): void {
+  const file = join(layout.data, "custom/agent/tools/zz-broken.ts");
+  mkdirSync(join(file, ".."), { recursive: true });
+  writeFileSync(file, body);
+}
+
+test("the owner hears about the stock build once a week, sooner if the files changed", async (t) => {
+  const layout = installationWithChat(
+    t,
+    "TELEGRAM_BOT_TOKEN=token\nTELEGRAM_DIGEST_CHAT_ID=42\nAGENT_LANGUAGE=ru\n",
+  );
+  const sent: string[] = [];
+  const said: string[] = [];
+  const send = (text: string): Promise<boolean> => {
+    sent.push(text);
+    return Promise.resolve(true);
+  };
+  ownFile(layout, "const = 1;\n");
+
+  await alertOwnerAboutCustom(layout, STOCK, (m) => said.push(m), send);
+  await alertOwnerAboutCustom(layout, STOCK, (m) => said.push(m), send);
+
+  assert.equal(sent.length, 1, sent.join("\n---\n"));
+  assert.match(sent[0], /^Ива работает на заводской сборке/u);
+  assert.match(sent[0], /error TS1005: ';' expected\./u);
+  assert.doesNotMatch(sent[0], /> iva build|more/u);
+  // Вывод апдейта — прежняя строка, при каждом прогоне.
+  assert.deepEqual(said, [STOCK, STOCK]);
+
+  ownFile(layout, "const x = ;\n");
+  await alertOwnerAboutCustom(layout, STOCK, () => {}, send);
+  assert.equal(sent.length, 2);
+});
+
+// Первая строка ошибки — вывод сборки файлов владельца: это данные рантайма, и в чат она
+// идёт через outbound-Gate, как любой текст с такими данными (scripts/lib/notice.ts).
+test("the stock-build Alert passes the outbound Gate: a key in the error line is redacted", async (t) => {
+  t.mock.method(console, "error", () => undefined);
+  const layout = installationWithChat(
+    t,
+    "TELEGRAM_BOT_TOKEN=token\nTELEGRAM_DIGEST_CHAT_ID=42\nAGENT_LANGUAGE=en\n",
+  );
+  const planted = `api_key=${"z".repeat(24)}`;
+  const sent: string[] = [];
+  ownFile(layout, "const = 1;\n");
+  await alertOwnerAboutCustom(
+    layout,
+    `your customization in data/custom does not build against this version, so Iva is running the stock build:\nerror TS1005 in zz.ts: const KEY = "${planted}"`,
+    () => {},
+    (text) => {
+      sent.push(text);
+      return Promise.resolve(true);
+    },
+  );
+  assert.equal(sent.length, 1);
+  assert.doesNotMatch(sent[0], /z{24}/u);
+  assert.match(sent[0], /\[REDACTED\]/u);
+});
+
+test("the stock-build Alert without a chat stays in the output and is not throttled", async (t) => {
+  const layout = installationWithChat(t, "AGENT_LANGUAGE=en\n");
+  const said: string[] = [];
+
+  await alertOwnerAboutCustom(layout, STOCK, (m) => said.push(m));
+
+  assert.deepEqual(said, [STOCK]);
+  assert.equal(existsSync(join(layout.data, "alert-state.json")), false);
+});
+
+test("a stock-build Alert that could not be sent says so and is not remembered", async (t) => {
+  const layout = installationWithChat(t);
+  const said: string[] = [];
+
+  await alertOwnerAboutCustom(
+    layout,
+    STOCK,
+    (m) => said.push(m),
+    () => Promise.resolve(false),
+  );
+
+  assert.match(
+    said.join("\n"),
+    /could not tell you in Telegram about the stock build/u,
+  );
+  assert.equal(existsSync(join(layout.data, "alert-state.json")), false);
+});
+
+// ── Alert о выключенном юзерботе (#273, ADR-0007) ─────────────────────────────────────────
+// Кто обновлялся кнопкой в боте, вывода `iva update` не видит: без этого Alert юзербот у него
+// просто молча перестаёт работать.
+
+const IMPORT_FAILED =
+  "userbot: зависимости не импортируются — ModuleNotFoundError: telegram_mcp";
+
+test("the owner hears that the update switched the userbot off, once a week per reason", async (t) => {
+  const layout = installationWithChat(
+    t,
+    "TELEGRAM_BOT_TOKEN=token\nTELEGRAM_DIGEST_CHAT_ID=42\nAGENT_LANGUAGE=ru\n",
+  );
+  const sent: string[] = [];
+  const said: string[] = [];
+  const send = (text: string): Promise<boolean> => {
+    sent.push(text);
+    return Promise.resolve(true);
+  };
+
+  await alertOwnerAboutUserbot(
+    layout,
+    IMPORT_FAILED,
+    (m) => said.push(m),
+    send,
+  );
+  await alertOwnerAboutUserbot(
+    layout,
+    IMPORT_FAILED,
+    (m) => said.push(m),
+    send,
+  );
+
+  assert.equal(sent.length, 1, sent.join("\n---\n"));
+  // The language is the installation's (settings, then AGENT_LANGUAGE), and this machine has
+  // its own: the text is checked against the one it resolves to. The exact RU and EN lines
+  // are pinned in scripts/lib/notice-policy.test.ts.
+  const tr = await noticeTranslator(layout.values);
+  assert.equal(sent[0], userbotOffAlert(tr));
+  assert.match(sent[0], /\/menu → 📡 Userbot → «(Включить|Turn on)»\.$/u);
+  // Причину и `iva userbot setup` несёт вывод апдейта (reinstallUserbot): в чат она не идёт,
+  // а удачная отправка строк в вывод не добавляет.
+  assert.deepEqual(said, []);
+
+  // Другая причина — другая проблема, и говорить надо сразу.
+  await alertOwnerAboutUserbot(
+    layout,
+    "userbot: restart failed (exit 1)",
+    () => {},
+    send,
+  );
+  assert.equal(sent.length, 2);
+  assert.equal(sent[1], sent[0]);
+});
+
+test("a userbot Alert that could not be sent says so in the output and is not remembered", async (t) => {
+  const layout = installationWithChat(t);
+  const said: string[] = [];
+
+  await alertOwnerAboutUserbot(
+    layout,
+    IMPORT_FAILED,
+    (m) => said.push(m),
+    () => Promise.resolve(false),
+  );
+
+  assert.deepEqual(said, ["could not tell you in Telegram about the userbot"]);
+  assert.equal(existsSync(join(layout.data, "alert-state.json")), false);
+});
+
+test("the userbot Alert goes out even when its throttle cannot be written", async (t) => {
+  t.mock.method(console, "error", () => undefined);
+  const layout = installationWithChat(t);
+  // Место файла дросселя занято каталогом: запись не пройдёт, отправка — пройдёт.
+  mkdirSync(join(layout.data, "alert-state.json"));
+  const sent: string[] = [];
+  const said: string[] = [];
+  const send = (text: string): Promise<boolean> => {
+    sent.push(text);
+    return Promise.resolve(true);
+  };
+
+  await alertOwnerAboutUserbot(
+    layout,
+    IMPORT_FAILED,
+    (m) => said.push(m),
+    send,
+  );
+  await alertOwnerAboutUserbot(
+    layout,
+    IMPORT_FAILED,
+    (m) => said.push(m),
+    send,
+  );
+
+  // Fail-open: незаписанный дроссель значит «сказать ещё раз», а не «молчать».
+  assert.equal(sent.length, 2);
+  assert.deepEqual(said, []);
+});
+
+// Причина — вывод чужой программы: коды вроде proxy_unreachable, английские фразы, пути, ключи.
+// Её несёт вывод `iva update`; в чат уходит один и тот же текст простыми словами.
+test("no reason the userbot went off reaches Telegram, whatever it carries (seed 20261010)", async (t) => {
+  const planted = [
+    "proxy_unreachable",
+    "probe_timeout",
+    `ValueError: api_key=${"q".repeat(24)}`,
+    "/home/user/iva/data/userbot/.venv/bin/python",
+    "зависимости не импортируются — ModuleNotFoundError: telegram_mcp",
+  ];
+  for (const language of ["ru", "en"]) {
+    const layout = installationWithChat(
+      t,
+      `TELEGRAM_BOT_TOKEN=token\nTELEGRAM_DIGEST_CHAT_ID=42\nAGENT_LANGUAGE=${language}\n`,
+    );
+    const plain = userbotOffAlert(await noticeTranslator(layout.values));
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ maxLength: 40 }),
+        fc.constantFrom(...planted),
+        fc.string({ maxLength: 40 }),
+        async (before, inside, after) => {
+          // Каждая причина говорит сразу: дроссель прошлого прогона этот не глушит.
+          rmSync(join(layout.data, "alert-state.json"), { force: true });
+          const sent: string[] = [];
+          await alertOwnerAboutUserbot(
+            layout,
+            `userbot: ${before}${inside}${after}`,
+            () => {},
+            (text) => {
+              sent.push(text);
+              return Promise.resolve(true);
+            },
+          );
+          assert.deepEqual(sent, [plain]);
+          assert.doesNotMatch(
+            plain,
+            /proxy_unreachable|probe_timeout|q{24}|\/home\/|ModuleNotFoundError|userbot: /u,
+          );
+        },
+      ),
+      { seed: 20261010, numRuns: 100 },
+    );
+  }
+});
+
+test("the userbot Alert reaches the Bot API as one plain sendMessage to the owner's chat", async (t) => {
+  t.mock.method(console, "error", () => undefined);
+  const layout = installationWithChat(
+    t,
+    "TELEGRAM_BOT_TOKEN=123:abc\nTELEGRAM_ALLOWED_USER_IDS=777, 888\nAGENT_LANGUAGE=en\n",
+  );
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  let answer: () => Promise<Response> = () =>
+    Promise.resolve(new Response("{}", { status: 200 }));
+  t.mock.method(globalThis, "fetch", (url: string, init: RequestInit) => {
+    calls.push({ url, init });
+    return answer();
+  });
+  const said: string[] = [];
+
+  await alertOwnerAboutUserbot(layout, IMPORT_FAILED, (m) => said.push(m));
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://api.telegram.org/bot123:abc/sendMessage");
+  assert.equal(calls[0].init.method, "POST");
+  assert.equal(typeof calls[0].init.body, "string");
+  const body = JSON.parse(calls[0].init.body as string) as Record<
+    string,
+    unknown
+  >;
+  // Без TELEGRAM_DIGEST_CHAT_ID — личный чат владельца, первый id Allowlist; без разметки.
+  assert.deepEqual(Object.keys(body).sort(), ["chat_id", "text"]);
+  assert.equal(body.chat_id, "777");
+  assert.match(String(body.text), /Userbot/u);
+  assert.deepEqual(said, []);
+  // The update waits for its Alert: a Telegram that never answers must not hold the outcome
+  // for the five minutes of fetch's own default.
+  assert.ok(calls[0].init.signal instanceof AbortSignal);
+  assert.equal(calls[0].init.signal.aborted, false);
+
+  // Telegram отказал (4xx) или сети нет: одна строка в выводе, дроссель не отмечен.
+  for (const refuse of [
+    () => Promise.resolve(new Response("{}", { status: 400 })),
+    () => Promise.reject(new TypeError("fetch failed")),
+  ]) {
+    rmSync(join(layout.data, "alert-state.json"), { force: true });
+    answer = refuse;
+    const lines: string[] = [];
+    await alertOwnerAboutUserbot(layout, "userbot: other", (m) =>
+      lines.push(m),
+    );
+    assert.deepEqual(lines, [
+      "could not tell you in Telegram about the userbot",
+    ]);
+    assert.equal(existsSync(join(layout.data, "alert-state.json")), false);
+  }
+});
+
+test("without a token or a chat the userbot Alert is silent and nothing is throttled", async (t) => {
+  const fetched = t.mock.method(globalThis, "fetch", () =>
+    Promise.resolve(new Response("{}", { status: 200 })),
+  );
+  for (const env of [
+    "AGENT_LANGUAGE=en\n",
+    "TELEGRAM_BOT_TOKEN=token\nAGENT_LANGUAGE=en\n",
+    "TELEGRAM_DIGEST_CHAT_ID=42\nAGENT_LANGUAGE=en\n",
+  ]) {
+    const layout = installationWithChat(t, env);
+    const said: string[] = [];
+    await alertOwnerAboutUserbot(layout, IMPORT_FAILED, (m) => said.push(m));
+    assert.deepEqual(said, [], env);
+    assert.equal(existsSync(join(layout.data, "alert-state.json")), false);
+  }
+  assert.equal(fetched.mock.callCount(), 0);
+});
+
+// Откат после флипа (сервис не ответил, шаг упал) поднимает юзербот на прежней версии:
+// сообщение «выключен» было бы ложью и на неделю заглушило бы правдивое.
+test("the userbot Alert waits for a served version and says nothing on a rollback", async (t) => {
+  const layout = installationWithChat(t);
+  const sent: string[] = [];
+  const alert = (reason: string) =>
+    alertOwnerAboutUserbot(
+      layout,
+      reason,
+      () => {},
+      (text) => {
+        sent.push(text);
+        return Promise.resolve(true);
+      },
+    );
+  const served = {
+    status: "updated",
+    version: "0.4.15-123456789abc",
+    previous: "0.4.14-123456789abc",
+    custom: "none",
+    migrations: [],
+    removed: [],
+  } as const satisfies Parameters<typeof alertOwnerWhenServed>[0];
+  for (const outcome of [
+    { status: "unhealthy", version: "0.4.15-123456789abc", log: "no answer" },
+    { status: "failed", message: "restart threw" },
+    { status: "current", version: "0.4.15-123456789abc" },
+    { status: "busy" },
+    { status: "too-old", own: "0.4.14", minUpdater: "0.4.15" },
+  ] as const satisfies ReadonlyArray<
+    Parameters<typeof alertOwnerWhenServed>[0]
+  >)
+    await alertOwnerWhenServed(outcome, IMPORT_FAILED, alert, () => {});
+  // Обновление прошло, а юзербот поднялся: говорить не о чем.
+  await alertOwnerWhenServed(served, undefined, alert, () => {});
+  assert.deepEqual(sent, []);
+  assert.equal(existsSync(join(layout.data, "alert-state.json")), false);
+
+  await alertOwnerWhenServed(served, IMPORT_FAILED, alert, () => {});
+  assert.equal(sent.length, 1);
+  assert.match(sent[0], /Userbot/u);
+});
+
+test("a userbot Alert that throws is one output line and the update goes on", async (t) => {
+  t.mock.method(console, "error", () => undefined);
+  const layout = installationWithChat(t);
+  const said: string[] = [];
+
+  await alertOwnerWhenServed(
+    {
+      status: "updated",
+      version: "0.4.15-123456789abc",
+      previous: null,
+      custom: "none",
+      migrations: [],
+      removed: [],
+    },
+    IMPORT_FAILED,
+    (reason) =>
+      alertOwnerAboutUserbot(
+        layout,
+        reason,
+        (m) => said.push(m),
+        () => Promise.reject(new Error("socket hang up")),
+      ),
+    (m) => said.push(m),
+  );
+
+  assert.deepEqual(said, ["could not tell you in Telegram about the userbot"]);
+});
+
+test("the flip restarts the plugin units that were running, and only those", async (t) => {
+  const home = mkdtempSync(join(tmpdir(), "iva-plugin-restart-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const data = layoutFor(home).data;
+  mkdirSync(join(data, "custom"), { recursive: true });
+  writeFileSync(
+    join(data, "custom/plugins.json"),
+    JSON.stringify({
+      marketplaces: [],
+      plugins: [
+        {
+          name: "trace",
+          source: "/tmp/trace",
+          ref: "",
+          sha: "",
+          digest: "",
+          enabled: true,
+          trusted: true,
+          installedAt: "2026-08-17T00:00:00.000Z",
+          mcp: { viewer: { port: 8730 }, gone: { port: 8731 } },
+          services: { web: { port: 8726 } },
+        },
+        {
+          name: "untrusted",
+          source: "/tmp/untrusted",
+          ref: "",
+          sha: "",
+          digest: "",
+          enabled: true,
+          trusted: false,
+          installedAt: "2026-08-17T00:00:00.000Z",
+          mcp: { srv: { port: 8732 } },
+        },
+      ],
+    }),
+  );
+  const unitDir = join(home, "systemd");
+  mkdirSync(unitDir, { recursive: true });
+  // `gone` числится в состоянии, но юнита на диске нет: рестартовать нечего.
+  for (const unit of [
+    "iva-mcp-trace-viewer.service",
+    "iva-plugin-trace-web.service",
+    "iva-mcp-untrusted-srv.service",
+  ])
+    writeFileSync(join(unitDir, unit), "[Service]\n");
+
+  const restarted: string[][] = [];
+  const asked: string[] = [];
+  const runtime = {
+    UNIT_DIR: unitDir,
+    systemd: {
+      isActive(unit: string) {
+        asked.push(unit);
+        // Сервис плагина стоит: его владелец и не просил поднимать.
+        return unit !== "iva-plugin-trace-web.service";
+      },
+      restart(units: readonly string[]) {
+        restarted.push([...units]);
+      },
+    },
+  } as unknown as Parameters<typeof restartPluginUnits>[0];
+  const said: string[] = [];
+
+  await restartPluginUnits(runtime, data, (message) => said.push(message));
+
+  // Только то, что живо, доверено и лежит на диске.
+  assert.deepEqual(restarted, [["iva-mcp-trace-viewer.service"]]);
+  assert.deepEqual(asked, [
+    "iva-mcp-trace-viewer.service",
+    "iva-plugin-trace-web.service",
+  ]);
+  assert.match(said.join("\n"), /restarted 1 plugin unit\(s\)/u);
+
+  // Отказ рестарта — строка в журнал, а не провал уже прошедшего апдейта.
+  const broken = {
+    UNIT_DIR: unitDir,
+    systemd: {
+      isActive: () => true,
+      restart() {
+        throw new Error("job failed");
+      },
+    },
+  } as unknown as Parameters<typeof restartPluginUnits>[0];
+  said.length = 0;
+  await restartPluginUnits(broken, data, (message) => said.push(message));
+  assert.match(
+    said.join("\n"),
+    /some plugin units did not restart: job failed/u,
+  );
+});
+
+/**
+ * Конверсия чекаута в версию правку в коде Ивы затирает: после перевода на диске
+ * остаётся то, что в коммите, а не то, что правил владелец, и копии правки нет нигде.
+ * Своё живёт в `data/custom/`, а разработчик ставит `.iva-dev`.
+ */
+test("a conversion wipes an edit to Iva's own code and keeps the file beside it", (t) => {
+  const home = mkdtempSync(join(tmpdir(), "iva-retire-edits-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const git = (...args: string[]): string =>
+    execFileSync("git", ["-C", home, ...args], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "iva",
+        GIT_AUTHOR_EMAIL: "iva@example.com",
+        GIT_COMMITTER_NAME: "iva",
+        GIT_COMMITTER_EMAIL: "iva@example.com",
+      },
+    }).trim();
+  git("init", "-q", "--initial-branch=main");
+  writeFileSync(join(home, "package.json"), '{ "name": "iva" }\n');
+  mkdirSync(join(home, "agent"), { recursive: true });
+  writeFileSync(join(home, "agent/index.ts"), "export const shipped = 1;\n");
+  git("add", "-A");
+  git("commit", "-q", "-m", "release");
+  // Правка в коде Ивы, правка в файле верхнего уровня и файл пользователя рядом.
+  writeFileSync(join(home, "agent/index.ts"), "export const mine = 2;\n");
+  writeFileSync(
+    join(home, "package.json"),
+    '{ "name": "iva", "mine": true }\n',
+  );
+  writeFileSync(join(home, "notes.md"), "# my notes\n");
+  // Чужой файл в нашем же каталоге, рядом с правленым исходником: спасает себя, но не его.
+  writeFileSync(join(home, "agent/secret.env"), "TOKEN=keep-me\n");
+
+  const removed = retireCheckout(home);
+
+  // Конверсия прошла: шапка чекаута выведена вместе с историей.
+  assert.ok(removed.includes("package.json"), JSON.stringify(removed));
+  assert.equal(existsSync(join(home, ".git")), false);
+  assert.equal(existsSync(join(home, "package.json")), false);
+  // Правленый tracked-файл уходит вместе с остальными: дальше работает версия из
+  // коммита, правка не переносится и нигде не сохраняется.
+  assert.equal(existsSync(join(home, "agent/index.ts")), false);
+  // Неотслеживаемое - пользователя, остаётся как есть, и каталог под него тоже.
+  assert.equal(readFileSync(join(home, "notes.md"), "utf8"), "# my notes\n");
+  assert.equal(
+    readFileSync(join(home, "agent/secret.env"), "utf8"),
+    "TOKEN=keep-me\n",
+  );
+  const saved = readdirSync(home, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(String(entry.parentPath ?? home), entry.name))
+    .filter((path) => readFileSync(path, "utf8").includes("mine"));
+  assert.deepEqual(saved, []);
+});
+
+/**
+ * Обратная сторона того же шва: неотслеживаемый файл внутри нашего каталога - чужой,
+ * вывод его не трогает, даже когда все tracked-файлы каталога уходят.
+ */
+test("a conversion leaves an untracked file inside a directory of ours", (t) => {
+  const home = mkdtempSync(join(tmpdir(), "iva-retire-untracked-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const git = (...args: string[]): string =>
+    execFileSync("git", ["-C", home, ...args], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "iva",
+        GIT_AUTHOR_EMAIL: "iva@example.com",
+        GIT_COMMITTER_NAME: "iva",
+        GIT_COMMITTER_EMAIL: "iva@example.com",
+      },
+    }).trim();
+  git("init", "-q", "--initial-branch=main");
+  writeFileSync(join(home, "package.json"), '{ "name": "iva" }\n');
+  mkdirSync(join(home, "agent"), { recursive: true });
+  writeFileSync(join(home, "agent/index.ts"), "export const shipped = 1;\n");
+  git("add", "-A");
+  git("commit", "-q", "-m", "release");
+  writeFileSync(join(home, "agent/secret.env"), "TOKEN=keep-me\n");
+
+  retireCheckout(home);
+
+  assert.equal(
+    readFileSync(join(home, "agent/secret.env"), "utf8"),
+    "TOKEN=keep-me\n",
+  );
+  // И только его: соседний tracked-файл в том же каталоге уходит вместе со всеми.
+  assert.equal(existsSync(join(home, "agent/index.ts")), false);
+});
+
+/**
+ * Tracked-файл можно подменить локально не только правкой, но и симлинком в никуда:
+ * `existsSync` идёт по ссылке и такой путь считает пустым. Контракт вывода - «все
+ * tracked-файлы сняты» - решается по самой записи, а неотслеживаемая ссылка остаётся
+ * пользователю, как любой его файл.
+ */
+test("a conversion removes a tracked path held by a dangling symlink", (t) => {
+  const home = mkdtempSync(join(tmpdir(), "iva-retire-dangling-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const git = (...args: string[]): string =>
+    execFileSync("git", ["-C", home, ...args], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "iva",
+        GIT_AUTHOR_EMAIL: "iva@example.com",
+        GIT_COMMITTER_NAME: "iva",
+        GIT_COMMITTER_EMAIL: "iva@example.com",
+      },
+    }).trim();
+  git("init", "-q", "--initial-branch=main");
+  writeFileSync(join(home, "package.json"), '{ "name": "iva" }\n');
+  mkdirSync(join(home, "agent"), { recursive: true });
+  writeFileSync(join(home, "agent/index.ts"), "export const shipped = 1;\n");
+  git("add", "-A");
+  git("commit", "-q", "-m", "release");
+  rmSync(join(home, "agent/index.ts"));
+  symlinkSync(join(home, "agent/gone.ts"), join(home, "agent/index.ts"));
+  // Такая же ссылка, но git о ней не знает: она пользователя и остаётся.
+  symlinkSync(join(home, "agent/gone.ts"), join(home, "agent/mine.ts"));
+
+  retireCheckout(home);
+
+  assert.throws(() => lstatSync(join(home, "agent/index.ts")));
+  assert.equal(lstatSync(join(home, "agent/mine.ts")).isSymbolicLink(), true);
+});
+
+/**
+ * Шим на PATH решается по `homedir()`, а он читается при загрузке модуля - поэтому шов
+ * проверяется дочерним процессом с подменённым HOME.
+ */
+test("a foreign file on the shim path stays, and the owner is told what to run", (t) => {
+  const fakeHome = mkdtempSync(join(tmpdir(), "iva-shim-foreign-"));
+  t.after(() => rmSync(fakeHome, { recursive: true, force: true }));
+  const install = join(fakeHome, "iva");
+  mkdirSync(join(install, "data"), { recursive: true });
+  mkdirSync(join(fakeHome, ".local/bin"), { recursive: true });
+  const shim = join(fakeHome, ".local/bin/iva");
+  writeFileSync(shim, "#!/bin/sh\necho not-iva\n");
+  const driver = join(fakeHome, "driver.ts");
+  writeFileSync(
+    driver,
+    [
+      `const { writeShim } = await import(${JSON.stringify(join(import.meta.dirname, "update-finish.ts"))});`,
+      "const logged: string[] = [];",
+      "const said: string[] = [];",
+      `writeShim(${JSON.stringify(install)}, (line) => logged.push(line), (line) => said.push(line));`,
+      "console.log(JSON.stringify({ logged, said }));",
+      "",
+    ].join("\n"),
+  );
+  const run = (): { logged: string[]; said: string[] } =>
+    JSON.parse(
+      execFileSync(process.execPath, [driver], {
+        encoding: "utf8",
+        env: { ...process.env, HOME: fakeHome },
+      }),
+    ) as { logged: string[]; said: string[] };
+
+  const foreign = run();
+
+  assert.equal(readFileSync(shim, "utf8"), "#!/bin/sh\necho not-iva\n");
+  assert.equal(foreign.logged.length, 0);
+  assert.equal(foreign.said.length, 1);
+  assert.match(foreign.said[0] ?? "", /\.local\/bin\/iva/u);
+  assert.match(foreign.said[0] ?? "", /current\/bin\/iva\.mjs/u);
+
+  // Свободное место - шим ставится, и владельцу говорить не о чем.
+  rmSync(shim);
+  const free = run();
+
+  assert.equal(free.said.length, 0);
+  assert.equal(free.logged.length, 1);
+  assert.equal(existsSync(shim), true);
+});

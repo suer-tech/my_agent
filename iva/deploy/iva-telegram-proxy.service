@@ -1,0 +1,16 @@
+[Unit]
+Description=Private Telegram-only HTTP proxy inside Iva VPN
+Requires=iva-vpn.service
+After=iva-vpn.service
+PartOf=iva-vpn.service
+
+[Service]
+Type=simple
+BindReadOnlyPaths=/etc/netns/iva-codex/resolv.conf:/etc/resolv.conf
+ExecStart=/usr/sbin/ip netns exec iva-codex /usr/bin/tinyproxy -d -c /etc/tinyproxy/iva-vpn.conf
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

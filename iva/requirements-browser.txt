@@ -1,0 +1,2 @@
+# Optional runtime for Iva's public web reader.
+playwright==1.61.0

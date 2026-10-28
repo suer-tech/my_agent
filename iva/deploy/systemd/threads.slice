@@ -1,0 +1,9 @@
+[Unit]
+Description=Resource budget for Threads browser
+[Slice]
+CPUQuota=60%
+CPUWeight=10
+MemoryHigh=896M
+MemoryMax=1024M
+MemorySwapMax=256M
+TasksMax=192

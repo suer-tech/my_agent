@@ -1,0 +1,14 @@
+[Unit]
+Description=Family finance outbound reminders
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/main_agent
+EnvironmentFile=%h/.config/family-finance/worker.env
+ExecStart=/usr/bin/python3 %h/main_agent/plugin/family-finance/remind.py --db %h/iva/data/plugin-data/family-finance/finance.sqlite3 --send
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=%h/iva/data/plugin-data/family-finance

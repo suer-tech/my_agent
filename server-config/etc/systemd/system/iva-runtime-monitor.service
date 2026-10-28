@@ -1,0 +1,14 @@
+[Unit]
+Description=Iva runtime liveness and repeated failures
+After=iva-telegram-proxy.service
+[Service]
+Type=oneshot
+User=iva
+Group=iva
+WorkingDirectory=/opt/iva
+Environment=HOME=/home/iva
+ExecStart=/opt/iva/.venv/bin/python -m iva_integration.runtime_health
+UMask=0077
+MemoryMax=128M
+TimeoutStartSec=90
+Nice=5

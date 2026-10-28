@@ -1,0 +1,11 @@
+[Unit]
+Description=Check research storage hourly and compact old intermediates daily
+
+[Timer]
+OnCalendar=*-*-* *:25:00 UTC
+Persistent=true
+RandomizedDelaySec=30
+Unit=iva-demand-retention.service
+
+[Install]
+WantedBy=timers.target

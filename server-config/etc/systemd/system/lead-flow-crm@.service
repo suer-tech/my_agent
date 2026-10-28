@@ -1,0 +1,31 @@
+[Unit]
+Description=One bounded Lead Flow CRM request through existing VPN
+After=iva-vpn.service
+ConditionPathExists=/run/netns/iva-codex
+
+[Service]
+Type=exec
+User=iva
+Group=iva
+NetworkNamespacePath=/run/netns/iva-codex
+BindReadOnlyPaths=/etc/netns/iva-codex/resolv.conf:/etc/resolv.conf
+ExecStart=/usr/bin/python3 -I /usr/local/lib/lead-flow-crm/request.py
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+RuntimeMaxSec=35
+TimeoutStopSec=2
+Restart=no
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=80M
+MemorySwapMax=0
+TasksMax=8
+CPUQuota=20%

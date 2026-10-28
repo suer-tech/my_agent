@@ -1,0 +1,29 @@
+[Unit]
+Description=Iva personal assistant (%i)
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=iva
+Group=iva
+WorkingDirectory=/opt/iva
+Environment=HOME=/home/iva
+Environment=CODEX_HOME=/home/iva/.codex
+Environment=PATH=/opt/iva/.venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONUTF8=1
+Environment=TZ=Asia/Yekaterinburg
+ExecStart=/opt/iva/.venv/bin/python /opt/iva/deploy/service.py %i
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=680
+KillMode=mixed
+UMask=0077
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

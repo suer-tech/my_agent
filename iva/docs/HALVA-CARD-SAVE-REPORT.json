@@ -1,0 +1,22 @@
+{
+  "card_name": "Халва",
+  "card_saved_in_database": true,
+  "card_count": 2,
+  "interest_only_user_reported": null,
+  "balance_known": false,
+  "allocation_known": false,
+  "principal_unchanged_by_minimum": null,
+  "payoff_term": null,
+  "annual_rate_known": false,
+  "historical_payments_created": 0,
+  "recurring_due_day": 23,
+  "first_due": "2026-10-23",
+  "october_obligation_count": 1,
+  "reminder_date": "2026-10-22",
+  "reminder_local_hour": 9,
+  "timezone": "Asia/Yekaterinburg",
+  "original_list_linked": true,
+  "cash_forecast_account_still_needed": true,
+  "actual_expenses_created": 0,
+  "telegram_sends": 0
+}

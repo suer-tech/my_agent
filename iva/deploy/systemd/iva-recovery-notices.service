@@ -1,0 +1,24 @@
+[Unit]
+Description=Notify Iva owner about verified automatic recovery
+After=iva-telegram-proxy.service
+
+[Service]
+Type=oneshot
+User=iva
+Group=iva
+WorkingDirectory=/opt/iva
+ExecStart=/opt/iva/.venv/bin/python -m iva_integration.recovery_notices
+Environment=PYTHONDONTWRITEBYTECODE=1
+UMask=0077
+Nice=15
+CPUQuota=10%
+MemoryMax=96M
+TimeoutStartSec=110
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/iva/data/recovery-notices /opt/iva/data/threads-browser/repair
+ReadOnlyPaths=/opt/iva/data/threads-browser/repair/repair.sqlite3
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+

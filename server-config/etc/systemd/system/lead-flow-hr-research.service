@@ -1,0 +1,24 @@
+[Unit]
+Description=HR lead research and independently reviewed first letters
+After=network-online.target iva-browser-coordinator.service iva-research-fetch.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+User=iva
+Group=iva
+WorkingDirectory=/opt/lead-flow
+Environment=PYTHONPATH=/opt/iva:/opt/lead-flow
+Environment=PYTHONUNBUFFERED=1
+Environment=HOME=/home/iva
+Environment=CODEX_HOME=/home/iva/.codex
+Environment=PATH=/opt/iva/.venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=FINANCE_CODEX_EXE=/usr/local/bin/iva-codex
+ExecStart=/opt/iva/.venv/bin/python /opt/lead-flow/hr_campaign.py --config /etc/lead-flow/hr-research.json --scheduled
+TimeoutStartSec=infinity
+UMask=0077
+Nice=10
+CPUQuota=35%
+MemoryHigh=512M
+MemoryMax=768M
+MemorySwapMax=128M
+PrivateTmp=yes

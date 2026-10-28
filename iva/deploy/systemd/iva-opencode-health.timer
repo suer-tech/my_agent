@@ -1,0 +1,13 @@
+[Unit]
+Description=Check OpenCode provider availability once per minute
+
+[Timer]
+OnBootSec=90s
+OnUnitActiveSec=60s
+AccuracySec=5s
+RandomizedDelaySec=5s
+Unit=iva-opencode-health.service
+
+[Install]
+WantedBy=timers.target
+

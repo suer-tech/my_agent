@@ -1,0 +1,24 @@
+[Unit]
+Description=Check OpenCode provider scope and recover confirmed idle failures
+After=iva-opencode.service iva-browser-coordinator.service
+
+[Service]
+Type=oneshot
+User=root
+Group=iva
+ExecStart=/opt/iva/.venv/bin/python /usr/local/lib/iva/opencode_health.py
+Environment=PYTHONDONTWRITEBYTECODE=1
+StateDirectory=iva-opencode-health
+StateDirectoryMode=0700
+UMask=0027
+Nice=15
+CPUQuota=10%
+MemoryMax=96M
+TimeoutStartSec=90
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/iva-opencode-health /var/lib/iva-opencode-health-events /opt/iva/data/application-deploy.lock
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+

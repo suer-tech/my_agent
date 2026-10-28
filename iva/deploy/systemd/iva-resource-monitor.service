@@ -1,0 +1,22 @@
+[Unit]
+Description=Deterministic Iva disk and available RAM check
+After=network-online.target iva-telegram-proxy.service
+
+[Service]
+Type=oneshot
+User=iva
+Group=iva
+StateDirectory=iva-resource-monitor
+StateDirectoryMode=0700
+RuntimeDirectory=iva-resource-monitor
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+ExecStart=/usr/bin/python3 /usr/local/lib/iva/resource_monitor.py
+TimeoutStartSec=45
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/iva/.env
+PrivateTmp=true
+MemoryMax=64M

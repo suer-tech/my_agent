@@ -1,0 +1,18 @@
+{
+  "real_codex_image_input": true,
+  "real_receipt_reading": true,
+  "receipt_total_rub": "300.00",
+  "cash_tendered_not_mistaken_for_total": true,
+  "pdf_pages": 2,
+  "pdf_second_page_scanned": true,
+  "exact_payments": 3,
+  "bank_dates_preserved": true,
+  "forecast_uses_bank_not_approximate_rule": true,
+  "duplicate_receipt_and_pdf_ignored": true,
+  "text_encodings": [
+    "utf-8",
+    "utf-16",
+    "cp1251"
+  ],
+  "telegram_transport": "synthetic only"
+}

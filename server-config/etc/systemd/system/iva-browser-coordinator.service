@@ -1,0 +1,15 @@
+[Unit]
+Description=Exclusive cooperative turns for MAX and Threads browsers
+After=network.target
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/iva-browser/browser_coordinator.py
+RuntimeDirectory=iva-browser
+RuntimeDirectoryMode=0755
+Restart=on-failure
+RestartSec=5
+UMask=0077
+MemoryMax=64M
+CPUQuota=10%
+[Install]
+WantedBy=multi-user.target

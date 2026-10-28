@@ -1,0 +1,9 @@
+[Unit]
+Description=SSH management backend for TLS/SSH multiplexing on port 443
+After=network.target
+[Service]
+ExecStart=/usr/sbin/sshd -D -o ListenAddress=127.0.0.1:22444 -o PidFile=/run/iva-management-sshd.pid
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

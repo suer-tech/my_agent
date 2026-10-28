@@ -1,0 +1,221 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import { CORE_CAP } from "#lib/core-cap.ts";
+import { clampCore } from "#lib/core-clamp.ts";
+
+function fillTo(text: string, target: number): string {
+  const marker = "{FILL}";
+  const size = target - (text.length - marker.length);
+  assert.ok(size >= 0, "test fixture is already above its target size");
+  return text.replace(marker, "x".repeat(size));
+}
+
+function pointers(text: string, heading = "## Указатели"): string {
+  return text.slice(text.indexOf(heading));
+}
+
+function tinyPrefixFixture(prefixLength: number): string {
+  const before = "# CORE — ядро памяти\n\n## Custom\n";
+  const between = "\n## Пользователь\n";
+  const after = "\n\n## Указатели\n- pointer stays exact\n";
+  const bullet = `- ${"x".repeat(78)}`;
+  const fixedWithoutPadding = before.length + between.length + after.length;
+  const protectedPaddingLength =
+    CORE_CAP - prefixLength - 1 - fixedWithoutPadding;
+  assert.ok(protectedPaddingLength > 0);
+  return `${before}${"p".repeat(protectedPaddingLength)}${between}${bullet}${after}`;
+}
+
+void test("under-cap input is returned byte-identically", () => {
+  const input =
+    "# CORE — ядро памяти\r\n\r\n" +
+    "<!-- comment -->  \r\n\r\n" +
+    "## Пользователь\r\n- Шима\r\n\r\n" +
+    "## Предпочтения\r\n- Кратко.\r\n\r\n" +
+    "## Активные цели (≤3)\r\n- one\r\n- two\r\n- three\r\n- four\r\n\r\n" +
+    "## Указатели\r\n- vault/MOC.md\r\n";
+
+  assert.ok(input.length < CORE_CAP);
+  assert.equal(clampCore(input), input);
+});
+
+// The shipped template's H1 and pointer label (vault-template/CORE.md). Every other fixture
+// in this file keeps the older wording on purpose: existing vaults still carry it.
+void test("the current template shape clamps and keeps its pointers exact", () => {
+  const input = fillTo(
+    "# CORE\n\n" +
+      "<!-- comment -->\n\n" +
+      "## Пользователь\n{FILL}\n\n" +
+      "## Предпочтения\n- undated, evicted first\n- 2026-07: kept\n\n" +
+      "## Активные цели (≤3)\n- goal\n\n" +
+      "## Указатели\n- Последний день: — · Индекс: vault/MOC.md\n",
+    CORE_CAP + 20,
+  );
+
+  const output = clampCore(input);
+  assert.ok(output.length <= CORE_CAP);
+  assert.ok(output.startsWith("# CORE\n"));
+  assert.ok(!output.includes("- undated, evicted first"));
+  assert.ok(output.includes("- 2026-07: kept"));
+  assert.equal(pointers(output), pointers(input));
+});
+
+void test("preferences evict undated bullets first, then oldest dated bullets", () => {
+  const undated = "- durable but undated\n";
+  const oldest = "- 2024-01: oldest dated\n";
+  const input = fillTo(
+    "# CORE — ядро памяти\n\n" +
+      "<!-- comment -->\n\n" +
+      "## Пользователь\n{FILL}\n\n" +
+      "## Предпочтения\n" +
+      "- 2026-06: newest\n" +
+      undated +
+      oldest +
+      "- 2025-03-14: middle\n\n" +
+      "## Активные цели (≤3)\n- goal\n\n" +
+      "## Указатели\n- vault/MOC.md\n",
+    CORE_CAP + undated.length + oldest.length - 1,
+  );
+
+  const output = clampCore(input);
+  assert.ok(output.length <= CORE_CAP);
+  assert.ok(!output.includes(undated.trim()));
+  assert.ok(!output.includes(oldest.trim()));
+  assert.ok(output.includes("- 2025-03-14: middle"));
+  assert.ok(output.includes("- 2026-06: newest"));
+});
+
+void test("an oversized goals section keeps its first three bullets", () => {
+  const input = fillTo(
+    "# CORE — ядро памяти\n\n" +
+      "## Пользователь\n{FILL}\n\n" +
+      "## Предпочтения\n\n" +
+      "## Активные цели (≤3)\n" +
+      "- goal one\n- goal two\n- goal three\n- goal four\n- goal five\n\n" +
+      "## Указатели\n- exact pointer\n",
+    CORE_CAP + 10,
+  );
+
+  const output = clampCore(input);
+  assert.ok(output.length <= CORE_CAP);
+  assert.ok(output.includes("- goal one"));
+  assert.ok(output.includes("- goal two"));
+  assert.ok(output.includes("- goal three"));
+  assert.ok(!output.includes("- goal four"));
+  assert.ok(!output.includes("- goal five"));
+});
+
+void test("pointers are never modified", () => {
+  const input = fillTo(
+    "# CORE — ядро памяти\n\n" +
+      "## Пользователь\n{FILL}\n\n" +
+      "## Предпочтения\n- remove me\n\n" +
+      "## Активные цели (≤3)\n- goal\n\n" +
+      "## Указатели\n" +
+      "- Последний день: vault/summaries/daily/2026-07-29\n" +
+      "- Оглавление: vault/MOC.md\n" +
+      "  continuation with exact spacing  \n",
+    CORE_CAP + 5,
+  );
+
+  const output = clampCore(input);
+  assert.equal(pointers(output), pointers(input));
+});
+
+void test("last resort truncates only the longest mutable bullet with an ellipsis", () => {
+  const input = fillTo(
+    "# CORE — ядро памяти\n\n" +
+      "## Пользователь\n" +
+      "- short identity\n" +
+      "- {FILL}\n\n" +
+      "## Предпочтения\n\n" +
+      "## Активные цели (≤3)\n\n" +
+      "## Указатели\n- pointer stays exact\n",
+    CORE_CAP + 75,
+  );
+
+  const output = clampCore(input);
+  assert.ok(output.length <= CORE_CAP);
+  assert.ok(output.includes("- short identity"));
+  assert.match(output, /x…\n\n## Предпочтения/);
+  assert.equal(pointers(output), pointers(input));
+});
+
+void test("clamp is idempotent", () => {
+  const input = fillTo(
+    "# CORE — ядро памяти\n\n" +
+      "## Пользователь\n- {FILL}\n\n" +
+      "## Предпочтения\n- 2024-01: old\n- 2026-07: new\n\n" +
+      "## Активные цели (≤3)\n- one\n- two\n- three\n- four\n\n" +
+      "## Указатели\n- pointer\n",
+    CORE_CAP + 90,
+  );
+  const once = clampCore(input);
+  assert.equal(clampCore(once), once);
+});
+
+void test("prefix 0/1 removes the mutable bullet; prefix 2 keeps a complete bullet marker", () => {
+  for (const prefixLength of [0, 1, 2]) {
+    const input = tinyPrefixFixture(prefixLength);
+    const output = clampCore(input);
+    assert.ok(output.length <= CORE_CAP);
+    assert.equal(pointers(output), pointers(input));
+    if (prefixLength < 2) {
+      assert.doesNotMatch(output, /- x/u);
+      assert.doesNotMatch(output, /…/u);
+    } else {
+      assert.match(output, /## Пользователь\n- …\n/u);
+    }
+    assert.equal(clampCore(output), output);
+  }
+});
+
+void test("all H1/H2 headings and their formatting are preserved", () => {
+  const input = fillTo(
+    "# CORE — ядро памяти\r\n\r\n" +
+      "<!-- exact comment -->\r\n\r\n" +
+      "## Пользователь  \r\n{FILL}\r\n\r\n" +
+      "## Неизвестный раздел\r\n- untouched unknown bullet\r\n\r\n" +
+      "## Предпочтения\r\n- old undated\r\n\r\n" +
+      "## Активные цели (≤3)\r\n- one\r\n\r\n" +
+      "## Указатели\r\n- pointer\r\n",
+    CORE_CAP + 5,
+  );
+
+  const headings = (text: string) =>
+    text.split("\n").filter((line) => /^#{1,2} /.test(line));
+  assert.deepEqual(headings(clampCore(input)), headings(input));
+  assert.ok(
+    clampCore(input).includes(
+      "## Неизвестный раздел\r\n- untouched unknown bullet\r\n",
+    ),
+  );
+});
+
+void test("English template headings are recognized", () => {
+  const old = "- 2024-02: old preference\n";
+  const input = fillTo(
+    "# CORE — memory core\n\n" +
+      "<!-- comment -->\n\n" +
+      "## User\n{FILL}\n\n" +
+      "## Preferences\n" +
+      old +
+      "- 2026-07: current preference\n\n" +
+      "## Active goals (≤3)\n- one\n- two\n- three\n- four\n\n" +
+      "## Pointers\n- Latest day: vault/daily.md · Index: vault/MOC.md\n",
+    CORE_CAP + old.length - 1,
+  );
+
+  const output = clampCore(input);
+  assert.ok(output.length <= CORE_CAP);
+  assert.ok(!output.includes(old.trim()));
+  assert.ok(!output.includes("- four"));
+  assert.equal(pointers(output, "## Pointers"), pointers(input, "## Pointers"));
+});
+
+void test("degenerate over-cap files without known sections stay safely unchanged", () => {
+  const input = `# unrelated\n${"x".repeat(CORE_CAP + 50)}\n## Custom\n- data\n`;
+  assert.doesNotThrow(() => clampCore(input));
+  assert.equal(clampCore(input), input);
+});

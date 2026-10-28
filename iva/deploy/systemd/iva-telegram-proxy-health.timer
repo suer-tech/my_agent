@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Iva Telegram connection each minute
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=60
+AccuracySec=5
+Unit=iva-telegram-proxy-health.service
+
+[Install]
+WantedBy=timers.target

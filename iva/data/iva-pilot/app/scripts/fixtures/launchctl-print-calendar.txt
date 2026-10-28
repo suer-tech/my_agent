@@ -1,0 +1,95 @@
+gui/501/app.iva-probe.repair-calendar = {
+	active count = 1
+	path = /tmp/iva-launchd-repair-probe/probe.plist
+	type = LaunchAgent
+	state = running
+
+	program = /bin/sh
+	arguments = {
+		/bin/sh
+		-c
+		trap 'sleep 2; exit 0' TERM; while :; do sleep 0.1; done
+	}
+
+	inherited environment = {
+		SSH_AUTH_SOCK => /var/run/com.apple.launchd.rVnRrStjbL/Listeners
+	}
+
+	default environment = {
+		PATH => /usr/bin:/bin:/usr/sbin:/sbin
+	}
+
+	environment = {
+		OSLogRateLimit => 64
+		XPC_SERVICE_NAME => app.iva-probe.repair-calendar
+	}
+
+	domain = gui/501 [100015]
+	asid = 100015
+	minimum runtime = 10
+	exit timeout = 25
+	runs = 1
+	pid = 89759
+	immediate reason = speculative
+	forks = 2
+	execs = 2
+	initialized = 1
+	trampolined = 1
+	started suspended = 0
+	proxy started suspended = 0
+	checked allocations = 0 (queried = 1)
+	checked allocations reason = no host
+	checked allocations flags = 0x0
+	last exit code = (never exited)
+
+	event triggers = {
+		app.iva-probe.repair-calendar.268435478 => {
+			keepalive = 0
+			service = app.iva-probe.repair-calendar
+			stream = com.apple.launchd.calendarinterval
+			monitor = com.apple.UserEventAgent-Aqua
+			descriptor = {
+				"Minute" => 0
+				"Hour" => 5
+			}
+		}
+	}
+
+	event channels = {
+		"com.apple.launchd.calendarinterval" = {
+			port = 0x110f6f
+			active = 0
+			managed = 1
+			reset = 0
+			hide = 0
+			watching = 0
+		}
+	}
+
+	resource coalition = {
+		ID = 90744
+		type = resource
+		state = active
+		active count = 1
+		name = app.iva-probe.repair-calendar
+	}
+
+	jetsam coalition = {
+		ID = 90745
+		type = jetsam
+		state = active
+		active count = 1
+		name = app.iva-probe.repair-calendar
+	}
+
+	spawn type = daemon (3)
+	jetsam priority = 40
+	jetsam memory limit (active) = (unlimited)
+	jetsam memory limit (inactive) = (unlimited)
+	jetsamproperties category = daemon
+	jetsam thread limit = 32
+	cpumon = default
+	sanitizer flags = 0x0
+
+	properties = runatload | inferred program
+}

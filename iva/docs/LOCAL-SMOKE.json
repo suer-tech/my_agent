@@ -1,0 +1,11 @@
+{
+  "real_codex_cli": true,
+  "telegram_transport": "synthetic; no network/token",
+  "initial_total_rub": "57000.00",
+  "final_total_rub": "56900.00",
+  "confirmation_required": true,
+  "duplicate_update_ignored": true,
+  "unauthorized_user_ignored": true,
+  "persistent_context": true,
+  "financial_operations": 1
+}

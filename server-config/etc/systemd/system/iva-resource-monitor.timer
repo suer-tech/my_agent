@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Iva server resources every three minutes
+
+[Timer]
+OnCalendar=*-*-* *:0/3:00
+Persistent=true
+AccuracySec=1
+Unit=iva-resource-monitor.service
+
+[Install]
+WantedBy=timers.target

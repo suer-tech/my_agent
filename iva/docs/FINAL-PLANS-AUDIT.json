@@ -1,0 +1,60 @@
+{
+  "six_debts_saved_separately": true,
+  "bank_graphs_active": 2,
+  "bank_rows": 95,
+  "bank_versions": [
+    1,
+    1
+  ],
+  "confirmed_unpaid_bank_rows": 1,
+  "cards_saved": 2,
+  "reported_debts_saved": 2,
+  "october_externally_paid_debts": 2,
+  "pending_bank_confirmations": 0,
+  "original_intake_lines": 18,
+  "old_bank_approximation_lines_linked": 2,
+  "active_generic_rules": 0,
+  "active_generic_plans": 0,
+  "operations": 0,
+  "utilities": [
+    {
+      "bill_ref": "electricity",
+      "due_day": 20,
+      "next_due": "2026-10-20",
+      "reminder": "2026-10-19",
+      "reminder_state": "pending",
+      "unknown_october": false,
+      "future_estimate": true
+    },
+    {
+      "bill_ref": "internet",
+      "due_day": 11,
+      "next_due": "2026-11-11",
+      "reminder": "2026-11-10",
+      "reminder_state": "pending",
+      "unknown_october": true,
+      "future_estimate": false
+    },
+    {
+      "bill_ref": "spouse_mobile",
+      "due_day": 22,
+      "next_due": "2026-10-22",
+      "reminder": "2026-10-21",
+      "reminder_state": "pending",
+      "unknown_october": false,
+      "future_estimate": false
+    },
+    {
+      "bill_ref": "own_mobile",
+      "due_day": 11,
+      "next_due": "2026-11-11",
+      "reminder": "2026-11-10",
+      "reminder_state": "pending",
+      "unknown_october": true,
+      "future_estimate": false
+    }
+  ],
+  "cash_forecast_requires_accounts": true,
+  "accounts": 0,
+  "telegram_sends_from_audit": 0
+}

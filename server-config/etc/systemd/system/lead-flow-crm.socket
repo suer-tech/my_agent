@@ -1,0 +1,14 @@
+[Unit]
+Description=Private Lead Flow research CRM transport (disabled until commissioned)
+
+[Socket]
+ListenStream=/run/lead-flow-crm.sock
+SocketUser=iva
+SocketGroup=iva
+SocketMode=0600
+Accept=yes
+MaxConnections=2
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

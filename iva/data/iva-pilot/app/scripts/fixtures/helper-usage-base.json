@@ -1,0 +1,358 @@
+{
+  "base": "21f447ed",
+  "eve": "0.51.1-iva.1",
+  "providers": {
+    "claude": {
+      "model": "claude-opus-5-5",
+      "turns": {
+        "chat": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "reminder": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "signal": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "watch": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "brief": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "insight": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "alert": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ]
+      }
+    },
+    "ollama": {
+      "model": "chat-fixture",
+      "turns": {
+        "chat": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "reminder": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "signal": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "watch": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "brief": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "insight": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "alert": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ]
+      }
+    },
+    "opencode": {
+      "model": "chat-fixture",
+      "turns": {
+        "chat": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "reminder": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "signal": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "watch": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "brief": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "insight": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ],
+        "alert": [
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture",
+          "chat-fixture"
+        ]
+      }
+    },
+    "openrouter": {
+      "model": "a/b",
+      "turns": {
+        "chat": ["a/b", "a/b", "a/b", "a/b", "a/b", "a/b", "a/b"],
+        "reminder": ["a/b", "a/b", "a/b", "a/b", "a/b", "a/b", "a/b"],
+        "signal": ["a/b", "a/b", "a/b", "a/b", "a/b", "a/b", "a/b"],
+        "watch": ["a/b", "a/b", "a/b", "a/b", "a/b", "a/b", "a/b"],
+        "brief": ["a/b", "a/b", "a/b", "a/b", "a/b", "a/b", "a/b"],
+        "insight": ["a/b", "a/b", "a/b", "a/b", "a/b", "a/b", "a/b"],
+        "alert": ["a/b", "a/b", "a/b", "a/b", "a/b", "a/b", "a/b"]
+      }
+    },
+    "codex": {
+      "model": "gpt-6.1-sol",
+      "turns": {
+        "chat": [
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol"
+        ],
+        "reminder": [
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol"
+        ],
+        "signal": [
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol"
+        ],
+        "watch": [
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol"
+        ],
+        "brief": [
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol"
+        ],
+        "insight": [
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol"
+        ],
+        "alert": [
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-sol"
+        ]
+      }
+    },
+    "custom": {
+      "model": "claude-opus-5-5",
+      "turns": {
+        "chat": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "reminder": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "signal": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "watch": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "brief": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "insight": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ],
+        "alert": [
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5",
+          "claude-opus-5-5"
+        ]
+      }
+    }
+  }
+}

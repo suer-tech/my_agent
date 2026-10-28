@@ -1,0 +1,16 @@
+{
+  "real_codex_cli": true,
+  "telegram": "not used",
+  "intake_persistent": true,
+  "details_selected_by_user": true,
+  "category_total_not_added": true,
+  "confirmed_rules": 2,
+  "actual_expenses_created": 0,
+  "opening_balance_rub": "1000.00",
+  "forecast_end_rub": "700.00",
+  "lead_days": [
+    1,
+    1
+  ],
+  "repeat_confirmation_ignored": true
+}

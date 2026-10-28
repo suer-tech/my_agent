@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "family-finance",
+  "version": "0.2.0",
+  "description": "Семейные финансы: отдельный реестр, прогноз и кредиты"
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Private verified Iva state backup
+
+[Service]
+Type=oneshot
+User=iva
+Group=iva
+WorkingDirectory=/opt/iva
+ExecStart=/opt/iva/.venv/bin/python /opt/iva/deploy/backup.py
+UMask=0077
+Nice=10

@@ -1,0 +1,7 @@
+[Unit]
+Description=Daily HR lead backup
+[Timer]
+OnCalendar=*-*-* 03:40:00 Asia/Yekaterinburg
+Persistent=true
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,15 @@
+import {createRequire} from 'node:module';
+import {pathToFileURL} from 'node:url';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+const root=resolve(import.meta.dirname,'..');const require=createRequire(resolve(root,'data/iva-pilot/app/package.json'));
+const {Client}=await import(pathToFileURL(require.resolve('@modelcontextprotocol/sdk/client/index.js')).href);
+const {StreamableHTTPClientTransport}=await import(pathToFileURL(require.resolve('@modelcontextprotocol/sdk/client/streamableHttp.js')).href);
+const config=JSON.parse(readFileSync(resolve(root,'data/iva-pilot/control.json'),'utf8'));
+const client=new Client({name:'pilot-verification',version:'1.0'});
+await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${config.gateway_port}/mcp`),{requestInit:{headers:{Authorization:`Bearer ${config.agent_token}`}}}));
+const tools=await client.listTools();if(tools.tools.length!==1)throw Error('Expected finance gateway tool');
+const result=await client.callTool({name:'finance',arguments:{mode:'read',action:'snapshot',payload_json:'{}'}});
+const state=JSON.parse(result.content[0].text);if(state.bank_schedules.length!==2 || state.utility_bills.length!==4)throw Error('Wrong finance database');
+const denied=await client.callTool({name:'finance',arguments:{mode:'confirm',id:'invalid'}});if(!denied.isError)throw Error('Confirmation exposed');
+console.log(JSON.stringify({mcp_handshake:true,mcp_finance_read:true,model_confirmation_unavailable:true}));await client.close();

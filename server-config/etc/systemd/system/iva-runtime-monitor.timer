@@ -1,0 +1,9 @@
+[Unit]
+Description=Check Iva runtime health every minute
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=5s
+Unit=iva-runtime-monitor.service
+[Install]
+WantedBy=timers.target

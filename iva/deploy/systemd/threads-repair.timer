@@ -1,0 +1,11 @@
+[Unit]
+Description=Check the durable Threads technical repair queue
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=threads-repair.service
+
+[Install]
+WantedBy=timers.target

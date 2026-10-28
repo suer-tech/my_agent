@@ -1,0 +1,610 @@
+{
+  "base": "21f447ed",
+  "archive": "0.51.1-iva.1",
+  "cases": {
+    "conversation/question-response": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "step.completed",
+        "input.requested",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "resumed": [
+        "input.resolved",
+        "turn.started",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "calls": 4,
+      "tools": [140, 140, 140, 140],
+      "limitNote": false,
+      "outcome": {
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "conversation/question-response-message": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "step.completed",
+        "input.requested",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "resumed": [
+        "input.resolved",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "calls": 4,
+      "tools": [140, 140, 140, 140],
+      "limitNote": false,
+      "outcome": {
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "conversation/question-message": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "step.completed",
+        "input.requested",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "resumed": [
+        "input.resolved",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "calls": 4,
+      "tools": [140, 140, 140, 140],
+      "limitNote": false,
+      "outcome": {
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "conversation/stale-response": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "resumed": [
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "calls": 2,
+      "tools": [140, 140],
+      "limitNote": false,
+      "outcome": {
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "conversation/approval-cancel": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "resumed": [
+        "approval.settled",
+        "turn.started",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "calls": 2,
+      "tools": [140, 140],
+      "limitNote": false,
+      "outcome": {
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "conversation/context": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "resumed": [
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "calls": 2,
+      "tools": [140, 140],
+      "limitNote": false,
+      "outcome": {
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "conversation/plain": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "resumed": [],
+      "calls": 1,
+      "tools": [140],
+      "limitNote": false,
+      "outcome": {
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "conversation/schema-failure": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "step.failed",
+        "turn.failed",
+        "session.waiting"
+      ],
+      "resumed": [],
+      "calls": 1,
+      "tools": [141],
+      "limitNote": false,
+      "outcome": {
+        "isError": true,
+        "output": "The agent could not produce a result matching the requested schema."
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "conversation/schema-success": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "step.completed",
+        "result.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "resumed": [],
+      "calls": 1,
+      "tools": [141],
+      "limitNote": false,
+      "outcome": {
+        "output": {
+          "answer": "ok"
+        }
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "conversation/compaction": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "compaction.requested",
+        "compaction.completed",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.waiting"
+      ],
+      "resumed": [],
+      "calls": 2,
+      "tools": [140, 0],
+      "limitNote": false,
+      "outcome": {
+        "output": "done"
+      },
+      "threshold": 1,
+      "thresholdPercent": null
+    },
+    "task/question-response": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "step.completed",
+        "input.requested"
+      ],
+      "resumed": [
+        "input.resolved",
+        "turn.started",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "calls": 4,
+      "tools": [140, 140, 140, 140],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "task/question-response-message": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "step.completed",
+        "input.requested"
+      ],
+      "resumed": [
+        "input.resolved",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "calls": 4,
+      "tools": [140, 140, 140, 140],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "task/question-message": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "step.completed",
+        "input.requested"
+      ],
+      "resumed": [
+        "input.resolved",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "actions.requested",
+        "action.result",
+        "step.completed",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "calls": 4,
+      "tools": [140, 140, 140, 140],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "task/stale-response": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "resumed": [
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "calls": 2,
+      "tools": [140, 140],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "task/approval-cancel": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "resumed": [
+        "approval.settled",
+        "turn.started",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "calls": 2,
+      "tools": [140, 140],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "task/context": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "resumed": [
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "calls": 2,
+      "tools": [140, 140],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "task/plain": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "resumed": [],
+      "calls": 1,
+      "tools": [140],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "output": "done"
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "task/schema-failure": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "step.failed",
+        "turn.failed",
+        "session.failed"
+      ],
+      "resumed": [],
+      "calls": 1,
+      "tools": [141],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "isError": true,
+        "output": "The agent could not produce a result matching the requested schema."
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "task/schema-success": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "step.started",
+        "step.completed",
+        "result.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "resumed": [],
+      "calls": 1,
+      "tools": [141],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "output": {
+          "answer": "ok"
+        }
+      },
+      "threshold": 100000,
+      "thresholdPercent": null
+    },
+    "task/compaction": {
+      "initial": [
+        "session.started",
+        "turn.started",
+        "message.received",
+        "compaction.requested",
+        "compaction.completed",
+        "step.started",
+        "message.appended",
+        "message.completed",
+        "step.completed",
+        "turn.completed",
+        "session.completed"
+      ],
+      "resumed": [],
+      "calls": 2,
+      "tools": [140, 0],
+      "limitNote": false,
+      "outcome": {
+        "done": true,
+        "output": "done"
+      },
+      "threshold": 1,
+      "thresholdPercent": null
+    }
+  }
+}

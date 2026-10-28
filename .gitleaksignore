@@ -1,0 +1,23 @@
+# Reviewed synthetic credentials and security/redaction test fixtures only.
+# Exact fingerprints, not blanket exclusions of test directories.
+iva/data/iva-pilot/app/agent/lib/schedule-runner-facts.test.ts:generic-api-key:175
+iva/data/iva-pilot/app/agent/lib/security-gate.test.ts:jwt:305
+iva/data/iva-pilot/app/agent/lib/security-gate.test.ts:jwt:309
+iva/data/iva-pilot/app/scripts/cli/diagnose.test.ts:generic-api-key:1013
+iva/data/iva-pilot/app/scripts/cli/doctor.test.ts:generic-api-key:619
+iva/data/iva-pilot/app/scripts/env-runtime-agreement.test.ts:generic-api-key:191
+iva/data/iva-pilot/app/scripts/env-runtime-agreement.test.ts:generic-api-key:311
+iva/data/iva-pilot/app/scripts/env-runtime-agreement.test.ts:generic-api-key:326
+iva/data/iva-pilot/app/scripts/env-runtime-agreement.test.ts:generic-api-key:352
+iva/data/iva-pilot/app/scripts/fixtures/setup-wizard/fresh.env.txt:generic-api-key:3
+iva/data/iva-pilot/app/scripts/fixtures/setup-wizard/reconfigure.env.txt:generic-api-key:3
+iva/data/iva-pilot/app/scripts/install-shell.test.ts:generic-api-key:777
+iva/data/iva-pilot/app/scripts/lib/env-file.test.ts:generic-api-key:74
+iva/data/iva-pilot/app/scripts/lib/env-file.test.ts:generic-api-key:76
+iva/data/iva-pilot/app/scripts/lib/menu/menu-screens.test.ts:generic-api-key:213
+iva/data/iva-pilot/app/scripts/lib/menu/menu-screens.test.ts:generic-api-key:382
+iva/data/iva-pilot/app/scripts/lib/menu/userbot.test.ts:generic-api-key:53
+iva/data/iva-pilot/app/scripts/lib/menu/userbot.test.ts:generic-api-key:95
+iva/data/iva-pilot/app/scripts/setup/main.test.ts:generic-api-key:135
+iva/data/iva-pilot/app/services/mcp-proxy/proxy.test.ts:generic-api-key:27
+iva/tests/test_personal_skills.py:generic-api-key:51

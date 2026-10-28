@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily private Iva state backup
+
+[Timer]
+OnCalendar=*-*-* 22:30:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

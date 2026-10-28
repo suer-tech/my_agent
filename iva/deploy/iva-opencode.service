@@ -1,0 +1,25 @@
+[Unit]
+Description=Iva OpenCode primary interpreter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=iva
+Group=iva
+WorkingDirectory=/home/iva/.local/share/iva-opencode/work
+Environment=HOME=/home/iva/.local/share/iva-opencode/home
+Environment=XDG_CONFIG_HOME=/home/iva/.local/share/iva-opencode/config
+Environment=XDG_DATA_HOME=/home/iva/.local/share/iva-opencode/data
+Environment=XDG_CACHE_HOME=/home/iva/.local/share/iva-opencode/cache
+Environment=OPENCODE_CONFIG=/opt/iva/data/opencode-runtime/server.json
+Environment=OPENCODE_DISABLE_AUTOUPDATE=true
+Environment=OPENCODE_DISABLE_PROJECT_CONFIG=true
+EnvironmentFile=/opt/iva/data/opencode-runtime/server.env
+ExecStart=/opt/iva/data/opencode-runtime/bin/opencode serve --hostname 127.0.0.1 --port 18726
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

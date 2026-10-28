@@ -1,0 +1,15 @@
+[Unit]
+Description=Isolated AmneziaWG for Iva Codex and Telegram
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 /usr/local/lib/iva-vpn/namespace.py start
+ExecStop=/usr/bin/python3 /usr/local/lib/iva-vpn/namespace.py stop
+TimeoutStartSec=60
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,104 @@
+import { strict as assert } from "node:assert";
+import test from "node:test";
+import { spawnSync } from "node:child_process";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { plantCliTree } from "../fixtures/cli-tree.ts";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const STABLE_BEARER = "a".repeat(43);
+
+void test("old install migration deduplicates a stable bearer and writes a loopback unit", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "iva-security-migration-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+
+  const project = join(dir, "iva");
+  const home = join(dir, "home");
+  const fakeBin = join(dir, "bin");
+  await mkdir(home, { recursive: true });
+  await mkdir(fakeBin, { recursive: true });
+  await plantCliTree(ROOT, project, { copy: ["scripts/cli"] });
+
+  const envPath = join(project, ".env");
+  await writeFile(
+    envPath,
+    [
+      "MODEL_PROVIDER=codex",
+      "ASSISTANT_BEARER=",
+      "IVA_PORT=9123",
+      `ASSISTANT_BEARER=${STABLE_BEARER}`,
+      "ASSISTANT_HOST=http://127.0.0.1:9123",
+      "",
+    ].join("\n"),
+  );
+  await chmod(envPath, 0o644);
+
+  const fakeSystemctl = join(fakeBin, "systemctl");
+  await writeFile(fakeSystemctl, "#!/bin/sh\nexit 0\n");
+  await chmod(fakeSystemctl, 0o755);
+
+  const runMigration = () =>
+    spawnSync(
+      process.execPath,
+      [join(project, "bin/iva.mjs"), "_install-units"],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          HOME: home,
+          NO_COLOR: "1",
+          PATH: `${fakeBin}:/usr/bin:/bin`,
+        },
+      },
+    );
+
+  const first = runMigration();
+  assert.equal(first.status, 0, first.stderr || first.stdout);
+  const migrated = await readFile(envPath, "utf8");
+  assert.equal(
+    migrated.match(/^ASSISTANT_BEARER=/gm)?.length,
+    1,
+    "duplicate bearer entries are collapsed",
+  );
+  assert.match(
+    migrated,
+    new RegExp(`^ASSISTANT_BEARER=${STABLE_BEARER}$`, "m"),
+  );
+  assert.equal((await stat(envPath)).mode & 0o777, 0o600);
+
+  const unit = await readFile(
+    join(home, ".config/systemd/user/iva.service"),
+    "utf8",
+  );
+  const canonicalProject = await realpath(project);
+  assert.match(unit, /eve\.js start --host 127\.0\.0\.1/);
+  assert.equal(
+    unit.match(/^WorkingDirectory=(.*)$/m)?.[1],
+    canonicalProject,
+    "the generated unit is rooted in the sandbox project",
+  );
+  assert.equal(
+    unit.match(/^EnvironmentFile=(.*)$/m)?.[1],
+    join(canonicalProject, ".env"),
+    "the generated unit reads the sandbox environment file",
+  );
+
+  const second = runMigration();
+  assert.equal(second.status, 0, second.stderr || second.stdout);
+  assert.equal(
+    await readFile(envPath, "utf8"),
+    migrated,
+    "a second migration is byte-stable",
+  );
+});

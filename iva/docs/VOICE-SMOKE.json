@@ -1,0 +1,18 @@
+{
+  "real_local_stt": true,
+  "real_codex_cli": true,
+  "real_windows_tts": true,
+  "real_ogg_opus_conversion": true,
+  "telegram_transport": "synthetic only; no Telegram API sends",
+  "transcripts_synthetic": [
+    "Скажи, сколько у меня денег на счетах сегодня?",
+    "Запиши расход 100 рублей на продукт и сегодня сосчита карта."
+  ],
+  "initial_total_rub": "57000.00",
+  "final_total_rub": "56900.00",
+  "confirmation_required": true,
+  "voice_responses": 2,
+  "duplicate_ignored": true,
+  "voice_mode": "auto",
+  "clarification_required": true
+}

@@ -1,0 +1,106 @@
+{
+  "source": "mini macOS 27.0.1, app.iva-probe.repair-calendar, 2026-10-17",
+  "bootoutCode": 0,
+  "states": [
+    {
+      "ms": 7,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 119,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 231,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 343,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 450,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 563,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 671,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 781,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 904,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 1023,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 1143,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 1265,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 1381,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 1493,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 1613,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 1735,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 1855,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 1977,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 2095,
+      "code": 0,
+      "state": "SIGTERMed"
+    },
+    {
+      "ms": 2207,
+      "code": 113,
+      "state": null
+    }
+  ]
+}

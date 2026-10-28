@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": [
+    "agent/**/*.ts",
+    "evals/**/*.ts",
+    "packages/**/*.ts",
+    "eslint.config.ts",
+    "scripts/**/*.ts",
+    "services/**/*.ts",
+    "**/*.mts",
+    ".eve/**/*.d.ts"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "banks_active": 2,
+  "bank_rows": 95,
+  "banks_newly_confirmed": 2,
+  "six_debts_separate": true,
+  "utility_bills": 2,
+  "original_intake_lines": 18,
+  "october_electricity_override_verified": true,
+  "future_electricity_is_estimate": true,
+  "internet_planned_day": 11,
+  "internet_october_status": "unknown",
+  "operations_created": 0,
+  "telegram_sends": 0
+}

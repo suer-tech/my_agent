@@ -1,0 +1,9 @@
+[Unit]
+Description=Fallback SSH management during HTTPS setup
+After=network.target
+[Service]
+ExecStart=/usr/sbin/sshd -D -p 22443 -o PidFile=/run/iva-management-fallback.pid
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

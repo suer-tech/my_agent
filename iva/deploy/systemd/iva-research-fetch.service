@@ -1,0 +1,34 @@
+[Unit]
+Description=Public research source reader through the isolated Iva VPN
+Requires=iva-vpn.service
+After=iva-vpn.service
+PartOf=iva-vpn.service
+
+[Service]
+Type=simple
+User=iva
+Group=iva
+WorkingDirectory=/opt/iva
+NetworkNamespacePath=/run/netns/iva-codex
+BindReadOnlyPaths=/etc/netns/iva-codex/resolv.conf:/etc/resolv.conf
+RuntimeDirectory=iva-research-fetch
+RuntimeDirectoryMode=0750
+ExecStart=/opt/iva/.venv/bin/python -I /usr/local/lib/iva-research-fetch/server.py
+Environment=PYTHONDONTWRITEBYTECODE=1
+Restart=on-failure
+RestartSec=5
+UMask=0077
+Nice=10
+CPUQuota=25%
+MemoryMax=256M
+TasksMax=12
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+InaccessiblePaths=/opt/iva/data /opt/iva/.env
+ReadWritePaths=/run/iva-research-fetch
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

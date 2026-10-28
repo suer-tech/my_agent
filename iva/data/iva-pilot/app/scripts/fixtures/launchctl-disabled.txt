@@ -1,0 +1,3 @@
+disabled services = {
+		"app.iva-probe.repair-calendar" => disabled
+}

@@ -1,0 +1,2 @@
+# Preserve the exact bytes of the owner's imported local sources and fixtures.
+* -text
