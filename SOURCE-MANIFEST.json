@@ -8446,8 +8446,8 @@
     },
     {
       "path": "lead-flow/mailer/README.md",
-      "sha256": "a8b7287e547d157514824744afddeb3cd64e38426164445745b6f505dcaca86d",
-      "bytes": 16373,
+      "sha256": "6a60ae1cad340cc6ff1c37cd05b0b0cd77bc3bb7d1e7c463545ccd670d7c5389",
+      "bytes": 16828,
       "origin": "local main_agent directory"
     },
     {
@@ -8506,8 +8506,8 @@
     },
     {
       "path": "lead-flow/mailer/transport.py",
-      "sha256": "52971cfb03e769014cf1e60e10f732b61dc1ad0e06354403393454f19a748919",
-      "bytes": 10575,
+      "sha256": "b5b12730b94da9801b301199c269629a86b054d5cbd03b4aecb4aad0e96facb0",
+      "bytes": 11849,
       "origin": "local main_agent directory"
     },
     {
@@ -8626,8 +8626,8 @@
     },
     {
       "path": "lead-flow/tests/test_mailer_llm.py",
-      "sha256": "3f35e6fe37bf613305fd6760f829ff3b90ce8dea307d56bf04ca27aa7250f3fe",
-      "bytes": 10520,
+      "sha256": "3bbaae768603f07740638f42549b8066dc489213a572c8bea9ea46716ff0253b",
+      "bytes": 11559,
       "origin": "local main_agent directory"
     },
     {
@@ -9196,5 +9196,6 @@
       "original_sha256": "7df82b86436788d72860c62f77db345b25a34e0f7c9efd1c338bd9aed1920d7e",
       "runtime_value_preserved": true
     }
-  ]
+  ],
+  "mail_rewrite_policy": "Style only; preserve facts and numbers; independent approval before SMTP; no psychological profiling."
 }

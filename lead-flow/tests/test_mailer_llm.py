@@ -23,10 +23,9 @@ HR_BODY = (
     "Если это не к вам или неактуально, сообщите — больше не буду беспокоить.\n\nAI Studio"
 )
 
-HR_ENHANCED = HR_BODY.replace(
-    "Окончательное решение остаётся за человеком.",
-    "Сервис также умеет составлять эмоциональный портрет кандидата на основе публичных данных, и таким образом"
-    " HR получает наиболее полную картину. Окончательное решение остаётся за человеком.")
+HR_ENHANCED = HR_BODY.replace("Предлагаю попробовать наш работающий сервис", "Предлагаю вам попробовать наш работающий сервис")
+def approving_client(messages, config):
+    return "APPROVED" if "независимый проверяющий" in messages[0]["content"] else HR_ENHANCED
 
 OCR_BODY = (
     "Здравствуйте!\n\nПредлагаю внедрить ИИ для автоматического извлечения данных из судебных документов:"
@@ -97,13 +96,27 @@ class EnhanceTests(unittest.TestCase):
 
     def test_enhancement_inserts_capability_and_preserves_letter(self):
         body, changed = enhance_hr_letter(
-            HR_BODY, self.config, client=lambda messages, config: HR_ENHANCED)
+            HR_BODY, self.config, client=approving_client)
         self.assertTrue(changed)
         self.assertEqual(body, HR_ENHANCED)
-        self.assertIn("эмоциональный портрет", body)
-        self.assertIn("публичных данных", body)
+        self.assertNotIn("эмоциональный портрет", body)
+        self.assertIn("Предлагаю вам попробовать", body)
         self.assertTrue(body.startswith("Здравствуйте!"))
         self.assertTrue(body.endswith("AI Studio"))
+
+    def test_independent_review_rejection_keeps_original(self):
+        def client(messages, config):
+            return "REJECTED" if "независимый проверяющий" in messages[0]["content"] else HR_ENHANCED
+        body, changed = enhance_hr_letter(HR_BODY, self.config, client=client)
+        self.assertFalse(changed)
+        self.assertEqual(body, HR_BODY)
+
+    def test_changed_numbers_or_profiling_never_reach_smtp(self):
+        for candidate in [HR_ENHANCED.replace("10–15", "1–2"), HR_ENHANCED.replace("готовый отчёт", "эмоциональный портрет и готовый отчёт")]:
+            with self.subTest(candidate=candidate):
+                body, changed = enhance_hr_letter(HR_BODY, self.config, client=lambda *_: candidate)
+                self.assertFalse(changed)
+                self.assertEqual(body, HR_BODY)
 
     def test_non_hr_letter_never_touched(self):
         body, changed = enhance_hr_letter(OCR_BODY, self.config, client=fail_client)
@@ -138,6 +151,7 @@ class ConfigTests(unittest.TestCase):
     def test_llm_key_reads_private_file(self):
         secret = Path(self.temp.name) / "llm-key"
         secret.write_text("sk-private-test-key-1234567890", encoding="utf-8")
+        secret.chmod(0o600)
         config = MailConfig(llm_enabled=True, llm_api_key_file=str(secret))
         self.assertEqual(config.llm_key(), "sk-private-test-key-1234567890")
 
@@ -164,6 +178,7 @@ class SendOneIntegrationTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         secret = Path(self.temp.name) / "secret"
         secret.write_text("not-a-real-password", encoding="utf-8")
+        secret.chmod(0o600)
         self.base = MailConfig(enabled=True, send_enabled=True, llm_enabled=True,
                                password_file=str(secret))
 
@@ -180,12 +195,12 @@ class SendOneIntegrationTests(unittest.TestCase):
         return result, smtp
 
     def test_hr_letter_enhanced_by_model(self):
-        result, smtp = self.send(HR_BODY, client=lambda messages, config: HR_ENHANCED)
+        result, smtp = self.send(HR_BODY, client=approving_client)
         self.assertEqual(result.outcome, "accepted")
         self.assertTrue(result.enhanced)
         self.assertIn("body_enhanced_by_model", result.receipt)
         text = mime_text(smtp.payload)
-        self.assertIn("эмоциональный портрет", text)
+        self.assertNotIn("эмоциональный портрет", text)
         self.assertTrue(text.startswith("Здравствуйте!"))
 
     def test_non_hr_letter_not_enhanced(self):
@@ -212,7 +227,7 @@ class SendOneIntegrationTests(unittest.TestCase):
     def test_compose_of_enhanced_body_remains_valid(self):
         config = replace(self.base, password_file="")
         mime = compose(self.draft(HR_ENHANCED), config)
-        self.assertIn("эмоциональный портрет", mime_text(mime))
+        self.assertNotIn("эмоциональный портрет", mime_text(mime))
 
 
 if __name__ == "__main__":
