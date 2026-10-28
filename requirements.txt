@@ -1,9 +1,0 @@
-aiogram>=3.29.0
-langgraph
-langchain-openai
-pydantic-settings
-python-dotenv
-youtube-transcript-api
-trafilatura
-beautifulsoup4
-duckduckgo-search
